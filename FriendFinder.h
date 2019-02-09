@@ -330,13 +330,15 @@ void initRadio() {
   rf95.setTxPower(23, false);
 }
 
+uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+
 bool checkRadio(bool verbose = true) {
   //Serial.println("Radio: check");
   if (rf95.available()) {
     if (verbose) Serial.println("Radio: available");
     // Should be a message for us now
-    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-    uint8_t len = sizeof(buf);
+    //uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(newDataPacket);
 
     if (rf95.recv((uint8_t *)&newDataPacket, &len)) {
       if (verbose) Serial.println("Radio: Message received!");
