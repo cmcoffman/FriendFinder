@@ -11,7 +11,7 @@ void setup() {
   initGPS();
   colorDotWipe(BLUE, 20);
   //while (!checkMag()) colorDotWipe(YELLOW, 20);
-  
+
 }
 
 
@@ -24,17 +24,17 @@ void loop() {
     colorDotBuff(4, GREY);
   } else {
     magGood = true;
-    
+
   }
-  checkRadio(false);
+  checkRadio(true);
   checkGPS(false);
   //printGPS();
   checkIMU();
-    
+
   //drawDistance();
 
 
-  
+
   int distance = HaverSine(GPS.latitudeDegrees, GPS.longitudeDegrees, newDataPacket.latitudeDegrees, newDataPacket.longitudeDegrees);
   if (distance > 5000) {
     colorDotBuff(0, RED);
@@ -46,21 +46,21 @@ void loop() {
     colorDotBuff(1, OFF);
     colorDotBuff(2, OFF);
     colorDotBuff(3, OFF);
-    
+
   }
-  
+
 
   drawCompass();
    drawFriend();
- 
-  
-  
+
+
+
   if (millis() - timer >2000) {
      timer = millis();
      printFriend();
      drawCompass(true);
      drawFriend(true);
-  
-  } 
+
+  }
   strip.show();
 }
