@@ -7,5 +7,7 @@
 			"path": "C:\\Users\\Clayton\\Documents\\Arduino\\build"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"diffEditor.ignoreTrimWhitespace": false
+	}
 }

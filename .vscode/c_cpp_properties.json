@@ -8,7 +8,8 @@
                 "${workspaceFolder}",
                 "C:\\Users\\Clayton\\Documents\\Arduino",
                 "C:\\Program Files (x86)\\Arduino\\libraries",
-                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\**"
+                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\**",
+                "C:\\Users\\Clayton\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel"
             ],
             "forcedInclude": [
                 "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\samd\\1.2.9\\cores\\arduino\\Arduino.h",
@@ -18,14 +19,14 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": false,
                 "path": [
-                    
+                    "${workspaceRoot}",
                     "${workspaceFolder}",
                     "C:\\Users\\Clayton\\Documents\\Arduino",
                     "C:\\Program Files (x86)\\Arduino\\libraries",
                     "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages**"
                 ]
             },
-            "compilerPath": "C:/Program Files (x86)/Arduino/hardware/tools/avr/bin/avr-gcc.exe",
+            "compilerPath": "C:\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\bin\\avr-gcc.exe",
             "cStandard": "c11",
             "cppStandard": "c++17",
             "intelliSenseMode": "clang-x64"

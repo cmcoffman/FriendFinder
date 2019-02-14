@@ -19,7 +19,12 @@ void initGPS() {
   // 9600 NMEA is the default baud rate for Adafruit MTK GPS's- some use 4800
   GPS.begin(9600);
   // uncomment this line to turn on RMC (recommended minimum) and GGA (fix data) including altitude
-  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+
+  // GGA only
+#define PMTK_SET_NMEA_OUTPUT_GGA "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29"
+GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_GGA);
+  //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+
   // uncomment this line to turn on only the "minimum recommended" data
   //GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
   // For parsing data, we don't suggest using anything but either RMC only or RMC+GGA since
@@ -90,4 +95,10 @@ void printGPS() {
     } else {
       Serial.println("-No GPS Fix.-");
     }
+}
+
+void printGPS2() {
+    Serial.print("MY Lat FIX: "); Serial.println(GPS.latitude_fixed);
+    Serial.print("MY Lon FIX: "); Serial.println(GPS.longitude_fixed);
+    Serial.print("MY HDOP: "); Serial.println(GPS.HDOP);
 }

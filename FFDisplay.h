@@ -33,7 +33,7 @@ void drawCompass (bool verbose = false) {
 
 void drawDistance(bool verbose = false) {
     int distance;
-    distance = HaverSine(GPS.latitudeDegrees, GPS.longitudeDegrees, newDataPacket.latitudeDegrees, newDataPacket.longitudeDegrees);
+    distance = HaverSine(GPS.latitude_fixed, GPS.longitude_fixed, inpacket.latitude_fixed, inpacket.longitude_fixed);
     if (verbose) {
       Serial.print("Distance: ");
       Serial.println(distance);
@@ -43,7 +43,7 @@ void drawDistance(bool verbose = false) {
 }
 
 void drawFriend(bool verbose = false) {
-  int friendHeading = bearing(GPS.latitudeDegrees, GPS.longitudeDegrees, newDataPacket.latitudeDegrees, newDataPacket.longitudeDegrees);
+  int friendHeading = bearing(GPS.latitude_fixed, GPS.longitude_fixed, inpacket.latitude_fixed, inpacket.longitude_fixed);
   int northHeading = findNorth();
   int pixelOut;
   if (friendHeading != northHeading) {

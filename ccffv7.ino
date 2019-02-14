@@ -1,66 +1,30 @@
 #include "FriendFinder.h"
 
-uint32_t timer = millis();
+uint32_t timer1 = millis();
+uint32_t timer2 = millis();
 
 void setup() {
   initSerial();
   initNeopixels();
   initIMU();
-  //waitForMag();
+  // waitForMag();
   initRadio();
   initGPS();
   colorDotWipe(BLUE, 20);
-  //while (!checkMag()) colorDotWipe(YELLOW, 20);
-
+  // while (!checkMag()) colorDotWipe(YELLOW, 20);
 }
 
-
-
-bool magGood = false;
 void loop() {
-  colorFillBuff(OFF);
-  if (!checkMag() && magGood == false) {
-    colorDotBuff(23, GREY);
-    colorDotBuff(4, GREY);
-  } else {
-    magGood = true;
+  checkRadio(false);
+   checkGPS(false);
 
+  if (millis() - timer1 > 10000) {
+    timer1 = millis();
+    printGPS2();
+    printPacket(inpacket);
+ int distanceMeters = HaverSineFixed(GPS.latitude_fixed, GPS.longitude_fixed, inpacket.latitude_fixed, inpacket.longitude_fixed);
+  //Serial.print("Distance (m): "); Serial.printn(distanceMeters);
+  float d = dumbDistance(GPS.latitude_fixed, GPS.longitude_fixed, inpacket.latitude_fixed, inpacket.longitude_fixed);
+  Serial.print("Distance (m): "); Serial.println(d, 6);
   }
-  checkRadio(true);
-  checkGPS(false);
-  //printGPS();
-  checkIMU();
-
-  //drawDistance();
-
-
-
-  int distance = HaverSine(GPS.latitudeDegrees, GPS.longitudeDegrees, newDataPacket.latitudeDegrees, newDataPacket.longitudeDegrees);
-  if (distance > 5000) {
-    colorDotBuff(0, RED);
-    colorDotBuff(1, RED);
-    colorDotBuff(2, RED);
-    colorDotBuff(3, RED);
-  } else {
-    colorDotBuff(0, OFF);
-    colorDotBuff(1, OFF);
-    colorDotBuff(2, OFF);
-    colorDotBuff(3, OFF);
-
-  }
-
-
-  drawCompass();
-   drawFriend();
-
-
-
-  if (millis() - timer >2000) {
-     timer = millis();
-     printFriend();
-     drawCompass(true);
-     drawFriend(true);
-
-  }
-  strip.show();
 }
