@@ -1,27 +1,27 @@
-// NeoDisplay.cpp
+// ffNeoRing.cpp
 // a wrapper/dervied class of Adafruit_NeoPixel to add some functionality
 // most everything passes on to the parent class
 
 #include "FriendFinder.h"
 #include <Adafruit_NeoPixel.h>
 
-const uint32_t NeoDisplay::Red = Adafruit_NeoPixel::Color(255, 0, 0);
-const uint32_t NeoDisplay::Green = Adafruit_NeoPixel::Color(0, 255, 0);
-const uint32_t NeoDisplay::Blue = Adafruit_NeoPixel::Color(0, 0, 255);
-const uint32_t NeoDisplay::Yellow = Adafruit_NeoPixel::Color(255, 255, 0);
-const uint32_t NeoDisplay::White = Adafruit_NeoPixel::Color(255, 255, 255);
-const uint32_t NeoDisplay::Grey = Adafruit_NeoPixel::Color(64, 64, 64);
-const uint32_t NeoDisplay::Off = Adafruit_NeoPixel::Color(0, 0, 0);
-const uint32_t NeoDisplay::YellowGreen = Adafruit_NeoPixel::Color(128, 255, 0);
-const uint32_t NeoDisplay::Purple = Adafruit_NeoPixel::Color(255, 0, 255);
+const uint32_t ffNeoRing::Red = Adafruit_NeoPixel::Color(255, 0, 0);
+const uint32_t ffNeoRing::Green = Adafruit_NeoPixel::Color(0, 255, 0);
+const uint32_t ffNeoRing::Blue = Adafruit_NeoPixel::Color(0, 0, 255);
+const uint32_t ffNeoRing::Yellow = Adafruit_NeoPixel::Color(255, 255, 0);
+const uint32_t ffNeoRing::White = Adafruit_NeoPixel::Color(255, 255, 255);
+const uint32_t ffNeoRing::Grey = Adafruit_NeoPixel::Color(64, 64, 64);
+const uint32_t ffNeoRing::Off = Adafruit_NeoPixel::Color(0, 0, 0);
+const uint32_t ffNeoRing::YellowGreen = Adafruit_NeoPixel::Color(128, 255, 0);
+const uint32_t ffNeoRing::Purple = Adafruit_NeoPixel::Color(255, 0, 255);
 
 
 // wrapper on Adafruit_NeoPixel constructor
-NeoDisplay::NeoDisplay(uint16_t n, uint8_t p, uint8_t t)
+ffNeoRing::ffNeoRing(uint16_t n, uint8_t p, uint8_t t)
     : Adafruit_NeoPixel(n, p, t) {}
 
 // Color Dot Runs around ring
-void NeoDisplay::colorDotWipe(uint32_t c, uint8_t wait) {
+void ffNeoRing::colorDotWipe(uint32_t c, uint8_t wait) {
   for (uint16_t i = 0; i < numPixels(); i++) {
     setPixelColor(i, c);
     setPixelColor(i - 1, Adafruit_NeoPixel::Color(0, 0, 0));
@@ -33,7 +33,7 @@ void NeoDisplay::colorDotWipe(uint32_t c, uint8_t wait) {
 }
 
 // Fill Whole Ring with color
-void NeoDisplay::colorWipe(uint32_t c, uint8_t wait) {
+void ffNeoRing::colorWipe(uint32_t c, uint8_t wait) {
   for (uint16_t i = 0; i < numPixels(); i++) {
     setPixelColor(i, c);
     show();
@@ -41,7 +41,7 @@ void NeoDisplay::colorWipe(uint32_t c, uint8_t wait) {
   }
 }
 
-void NeoDisplay::colorDot(int pixel, uint32_t color) {
+void ffNeoRing::colorDot(int pixel, uint32_t color) {
   for (uint16_t i = 0; i < numPixels(); i++) {
     if (i == pixel) {
       setPixelColor(i, color);
@@ -53,25 +53,25 @@ void NeoDisplay::colorDot(int pixel, uint32_t color) {
 }
 
 // overload the base class show to check if stripChanged
-void NeoDisplay::show(void) {
+void ffNeoRing::show(void) {
     Adafruit_NeoPixel::show();
     }
 
-void NeoDisplay::clearStrip() {
+void ffNeoRing::clearStrip() {
   for (int i = 0; i < numPixels(); i++) setPixelColor(i, 0);
 }
 
-void NeoDisplay::fillStrip(uint32_t c) {
+void ffNeoRing::fillStrip(uint32_t c) {
   for (int i = 0; i < numPixels(); i++) setPixelColor(i, c);
 }
 
-uint32_t NeoDisplay::randomWheelColor(void) {
+uint32_t ffNeoRing::randomWheelColor(void) {
     return colorWheel(random(0, 255));
 }
 
 // Input a value 0 to 255 to get a color value.
 // The colours are a transition r - g - b - back to r.
-uint32_t NeoDisplay::colorWheel(byte WheelPos) {
+uint32_t ffNeoRing::colorWheel(byte WheelPos) {
   WheelPos = 255 - WheelPos;
   if (WheelPos < 85) {
     return Adafruit_NeoPixel::Color(255 - WheelPos * 3, 0, WheelPos * 3);

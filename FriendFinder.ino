@@ -5,7 +5,7 @@
 #define NUMPIXELS 24
 // Strip is connected to Arduino Pin 5
 #define NEOPIXEL_RING_PIN 5
-NeoDisplay ring = NeoDisplay(NUMPIXELS, NEOPIXEL_RING_PIN, NEO_GRB + NEO_KHZ800);
+ffNeoRing ring = ffNeoRing(NUMPIXELS, NEOPIXEL_RING_PIN, NEO_GRB + NEO_KHZ800);
 
 void setup() {
   Serial.begin(115200);

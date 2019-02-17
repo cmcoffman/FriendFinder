@@ -3,10 +3,10 @@
 
 #include <Adafruit_NeoPixel.h>
 
-class NeoDisplay : public Adafruit_NeoPixel {
+class ffNeoRing : public Adafruit_NeoPixel {
  private:
  public:
-  NeoDisplay(uint16_t n, uint8_t p = 6, uint8_t t = NEO_GRB + NEO_KHZ800);
+  ffNeoRing(uint16_t n, uint8_t p = 6, uint8_t t = NEO_GRB + NEO_KHZ800);
 
   // some simple functions to effect whole strip
   void clearStrip();
@@ -33,5 +33,6 @@ class NeoDisplay : public Adafruit_NeoPixel {
   static const uint32_t YellowGreen;
   static const uint32_t Purple;
 };
+
 
 #endif  // Close Library
