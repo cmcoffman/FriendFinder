@@ -6,6 +6,7 @@
 class ffNeoRing : public Adafruit_NeoPixel {
  private:
  public:
+ // Constructor
   ffNeoRing(uint16_t n, uint8_t p = 6, uint8_t t = NEO_GRB + NEO_KHZ800);
 
   // some simple functions to effect whole strip
