@@ -2,6 +2,7 @@
 #define _FRIENDFINDER_
 
 #include <Adafruit_NeoPixel.h>
+#include <Adafruit_GPS.h>
 
 class ffNeoRing : public Adafruit_NeoPixel {
  private:
@@ -33,6 +34,34 @@ class ffNeoRing : public Adafruit_NeoPixel {
   static const uint32_t Off;
   static const uint32_t YellowGreen;
   static const uint32_t Purple;
+};
+
+class ffGPS : public Adafruit_GPS {
+ private:
+ public:
+ // Constructor
+  ffGPS(HardwareSerial *ser);
+
+  // GPS Functions
+void startup(bool verbose = true);
+void print(bool verbose = true);
+void update(bool verbose);
+
+// GPS Data
+// uint8_t hour, minute, seconds, year, month, day;
+//   uint16_t milliseconds;
+//   // Floating point latitude and longitude value in degrees.
+//   float latitude, longitude;
+//   // Fixed point latitude and longitude value with degrees stored in units of 1/100000 degrees,
+//   // and minutes stored in units of 1/100000 degrees.  See pull #13 for more details:
+//   //   https://github.com/adafruit/Adafruit-GPS-Library/pull/13
+//   int32_t latitude_fixed, longitude_fixed;
+//   float latitudeDegrees, longitudeDegrees;
+//   float geoidheight, altitude;
+//   float speed, angle, magvariation, HDOP;
+//   char lat, lon, mag;
+//   boolean fix;
+//   uint8_t fixquality, satellites;
 };
 
 

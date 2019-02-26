@@ -15,7 +15,6 @@ const uint32_t ffNeoRing::Off = Adafruit_NeoPixel::Color(0, 0, 0);
 const uint32_t ffNeoRing::YellowGreen = Adafruit_NeoPixel::Color(128, 255, 0);
 const uint32_t ffNeoRing::Purple = Adafruit_NeoPixel::Color(255, 0, 255);
 
-
 // wrapper on Adafruit_NeoPixel constructor
 ffNeoRing::ffNeoRing(uint16_t n, uint8_t p, uint8_t t)
     : Adafruit_NeoPixel(n, p, t) {}
@@ -53,9 +52,7 @@ void ffNeoRing::colorDot(int pixel, uint32_t color) {
 }
 
 // overload the base class show to check if stripChanged
-void ffNeoRing::show(void) {
-    Adafruit_NeoPixel::show();
-    }
+void ffNeoRing::show(void) { Adafruit_NeoPixel::show(); }
 
 void ffNeoRing::clearStrip() {
   for (int i = 0; i < numPixels(); i++) setPixelColor(i, 0);
@@ -66,7 +63,7 @@ void ffNeoRing::fillStrip(uint32_t c) {
 }
 
 uint32_t ffNeoRing::randomWheelColor(void) {
-    return colorWheel(random(0, 255));
+  return colorWheel(random(0, 255));
 }
 
 // Input a value 0 to 255 to get a color value.
@@ -81,5 +78,130 @@ uint32_t ffNeoRing::colorWheel(byte WheelPos) {
   } else {
     WheelPos -= 170;
     return Adafruit_NeoPixel::Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+  }
+}
+
+// wrapper on Adafruit_GPS constructor
+ffGPS::ffGPS(HardwareSerial *ser) : Adafruit_GPS(ser) {}
+
+void ffGPS::startup(bool verbose) {
+  Adafruit_GPS::begin(9600);
+  // turn on only GPRMC sentence
+  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
+  // turn on GPRMC and GGA
+  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+  // GGA only
+  Adafruit_GPS::sendCommand(
+      "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29");
+  // turn on ALL THE DATA
+  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_OUTPUT_ALLDATA);
+  // turn off output
+  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_OUTPUT_OFF);
+
+  // How often position is echoed via NMEA
+  // o actually speed up the position fix you must also
+  // send one of the position fix rate commands below
+  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_UPDATE_100_MILLIHERTZ);  // 1 per
+  // 10s
+  Adafruit_GPS::sendCommand(PMTK_SET_NMEA_UPDATE_200_MILLIHERTZ);  // 1 per 5s
+  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);    // 1 per second
+  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_UPDATE_2HZ);    // 2 per second
+  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_UPDATE_5HZ);    // 5 per second
+  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_UPDATE_10HZ);   // 10 per second
+
+  // How often the GPS solves it's position
+  // Never tested these
+  // Adafruit_GPS::sendCommand(PMTK_API_SET_FIX_CTL_100_MILLIHERTZ); // 1 per
+  // 10s Adafruit_GPS::sendCommand(PMTK_API_SET_FIX_CTL_200_MILLIHERTZ); // 1
+  // per 5s Adafruit_GPS::sendCommand(PMTK_API_SET_FIX_CTL_1HZ);    // 1 per
+  // second Adafruit_GPS::sendCommand(PMTK_API_SET_FIX_CTL_5HZ);    // 5 per
+  // second Can't fix position faster than 5 times a second!
+
+  // Request updates on antenna status, comment out to keep quiet
+  // Adafruit_GPS::sendCommand(PGCMD_ANTENNA);
+
+  // Ask for firmware version
+  // Serial.println(PMTK_Q_RELEASE);
+}
+
+
+
+void ffGPS::update(bool verbose = true) {
+  char c = Adafruit_GPS::read();
+
+  if (Adafruit_GPS::newNMEAreceived()) {
+    if (verbose) {
+      Serial.println("********************************");
+      Serial.println("***New NMEA Sentence Received***");
+      Serial.println("********************************");
+      Serial.println("NMEA Sentence:");
+      Serial.println(Adafruit_GPS::lastNMEA());
+    }
+
+    if (!Adafruit_GPS::parse(Adafruit_GPS::lastNMEA())) {
+      // this also sets the newNMEAreceived() flag to false
+      if (verbose) {
+        Serial.println("*Failed to Parse*");
+        Serial.println("********************************");
+        Serial.println("***      End of Message      ***");
+        Serial.println("********************************");
+      }
+      return;  // we can fail to parse a sentence in which case we should just
+               // wait for another
+    } else {
+      if (verbose) {
+        ffGPS::print(verbose);
+        Serial.println("********************************");
+        Serial.println("***      End of Message      ***");
+        Serial.println("********************************");
+      }
+    }
+  }
+}
+
+void ffGPS::print(bool verbose = true) {
+  Serial.println("***     Parsed GPS Data:     ***");
+  if (Adafruit_GPS::fixquality == B0) {  // note use of binary "BO"
+    Serial.print("Time: ");
+    Serial.print(Adafruit_GPS::hour, DEC);
+    Serial.print(':');
+    Serial.print(Adafruit_GPS::minute, DEC);
+    Serial.print(':');
+    Serial.print(Adafruit_GPS::seconds, DEC);
+    Serial.print('.');
+    Serial.println(Adafruit_GPS::milliseconds);
+    Serial.print("Fix quality: ");
+    Serial.println((int)Adafruit_GPS::fixquality);
+    Serial.println("(No Location Fix)");
+  }
+
+  if (Adafruit_GPS::fixquality > B0) {  // note use of binary "BO"
+    Serial.println("*GPS Fix*");
+    Serial.print("Time: ");
+    Serial.print(Adafruit_GPS::hour, DEC);
+    Serial.print(':');
+    Serial.print(Adafruit_GPS::minute, DEC);
+    Serial.print(':');
+    Serial.print(Adafruit_GPS::seconds, DEC);
+    Serial.print('.');
+    Serial.println(Adafruit_GPS::milliseconds);
+    Serial.print("Location: ");
+    Serial.print(Adafruit_GPS::latitudeDegrees, 7);
+    Serial.print(", ");
+    Serial.println(Adafruit_GPS::longitudeDegrees, 7);
+    Serial.print("Location (Fixed Width): ");
+    Serial.print(Adafruit_GPS::latitude_fixed);
+    Serial.print(", ");
+    Serial.println(Adafruit_GPS::longitude_fixed);
+    Serial.print("Fix Quality: ");
+    Serial.println((int)Adafruit_GPS::fixquality);
+    Serial.print("Satellites: ");
+    Serial.println((int)Adafruit_GPS::satellites);
+    Serial.print("HDOP: ");
+    Serial.println(Adafruit_GPS::HDOP, 2);
+    Serial.print("Altitude: ");
+    Serial.println(Adafruit_GPS::altitude);
+    Serial.print("Geoid Height: ");
+    Serial.println(Adafruit_GPS::geoidheight);
   }
 }
