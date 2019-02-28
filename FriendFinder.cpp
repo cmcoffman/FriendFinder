@@ -205,3 +205,32 @@ void ffGPS::print(bool verbose = true) {
     Serial.println(Adafruit_GPS::geoidheight);
   }
 }
+
+
+// Radio Stuff
+// wrapper on RH_RF95 constructor
+ffRadio::ffRadio(uint8_t csPin, uint8_t intPin) : RH_RF95(csPin, intPin) {}
+
+void ffRadio::startup(bool verbose = true) {
+  if (verbose) Serial.println("Radio Startup...");
+
+  // Manual Reset
+  pinMode(RFM95_RST, OUTPUT);
+  digitalWrite(RFM95_RST, HIGH);
+  digitalWrite(RFM95_RST, LOW);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(10);
+
+  bool init = RH_RF95::init();
+  if (!init && verbose) Serial.println("RF95 Init - FAIL");
+  if (init && verbose) Serial.println("RF95 Init - OK");
+
+  if (verbose) Serial.print("Set Radio Freq...");
+  if (!RH_RF95::setFrequency(RF95_FREQ) && verbose) Serial.println("[FAIL]");
+  if (RH_RF95::setFrequency(RF95_FREQ) && verbose) Serial.println("[Succeed]");
+
+  if (verbose) Serial.println("Set Radio power...");
+  RH_RF95::setTxPower(23, false);
+  if (verbose) Serial.println("-End Radio Init-");
+}

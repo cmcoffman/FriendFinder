@@ -3,6 +3,8 @@
 
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_GPS.h>
+#include <RH_RF95.h>
+#include <RHReliableDatagram.h>
 
 class ffNeoRing : public Adafruit_NeoPixel {
  private:
@@ -64,5 +66,38 @@ void update(bool verbose);
 //   uint8_t fixquality, satellites;
 };
 
+// Radio Stuff
+// for Prototype Board
+// #define RFM95_CS 6
+// #define RFM95_RST 11
+// #define RFM95_INT 10
+
+// #define CLIENT_ADDRESS 1
+// #define SERVER_ADDRESS 2
+
+// for Feather32u4 RFM9x
+  #define RFM95_CS 8
+  #define RFM95_RST 4
+  #define RFM95_INT 7
+
+
+/* for feather m0 RFM9x
+  #define RFM95_CS 8
+  #define RFM95_RST 4
+  #define RFM95_INT 3
+*/
+
+// Change to 434.0 or other frequency, must match RX's freq!
+#define RF95_FREQ 915.0
+
+class ffRadio : public RH_RF95 {
+   private:
+ public:
+   // Constructor
+  ffRadio(uint8_t csPin, uint8_t intPin);
+ void startup(bool verbose = true);
+// void print(bool verbose = true);
+// void update(bool verbose);
+};
 
 #endif  // Close Library

@@ -11,15 +11,45 @@ ffNeoRing ring = ffNeoRing(NUMPIXELS, NEOPIXEL_RING_PIN, NEO_GRB + NEO_KHZ800);
 #define GPSSerial Serial1
 ffGPS GPS = ffGPS(&GPSSerial);
 
+// Radio Stuff
+// for Prototype Board
+// #define RFM95_CS 6
+// #define RFM95_RST 11
+// #define RFM95_INT 10
+
+
+// for Feather32u4 RFM9x
+  #define RFM95_CS 8
+  #define RFM95_RST 4
+  #define RFM95_INT 7
+
+
+/* for feather m0 RFM9x
+  #define RFM95_CS 8
+  #define RFM95_RST 4
+  #define RFM95_INT 3
+*/
+
+#define CLIENT_ADDRESS 1
+#define SERVER_ADDRESS 2
+
+// Change to 434.0 or other frequency, must match RX's freq!
+#define RF95_FREQ 915.0
+
+ffRadio radio(RFM95_CS, RFM95_INT);
+
 void setup() {
   Serial.begin(115200);
+  while (!Serial && millis() < 5000);
   delay(500);
   Serial.println("Starting NeoEffects Test");
   ring.begin();
   ring.clearStrip();
   ring.show();
-  //GPS.begin(9600);
+
   GPS.startup();
+  radio.startup();
+
 }
 
 // Conveinient timer construct (at end of loop)
