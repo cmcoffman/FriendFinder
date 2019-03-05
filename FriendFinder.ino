@@ -33,10 +33,12 @@ ffGPS GPS = ffGPS(&GPSSerial);
 #define CLIENT_ADDRESS 1
 #define SERVER_ADDRESS 2
 
+
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
 
 ffRadio radio(RFM95_CS, RFM95_INT);
+ffMessenger messenger(radio, SERVER_ADDRESS);
 
 void setup() {
   Serial.begin(115200);
@@ -49,6 +51,8 @@ void setup() {
 
   GPS.startup();
   radio.startup();
+  messenger.startup();
+
 
 }
 

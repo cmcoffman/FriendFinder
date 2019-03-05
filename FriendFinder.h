@@ -100,4 +100,14 @@ class ffRadio : public RH_RF95 {
 // void update(bool verbose);
 };
 
+class ffMessenger : public RHReliableDatagram {
+   private:
+ public:
+   // Constructor
+  ffMessenger(RHGenericDriver& driver, uint8_t thisAddress);
+ void startup(bool verbose = true);
+// void print(bool verbose = true);
+// void update(bool verbose);
+};
+
 #endif  // Close Library

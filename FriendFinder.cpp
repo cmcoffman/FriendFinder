@@ -234,3 +234,14 @@ void ffRadio::startup(bool verbose = true) {
   RH_RF95::setTxPower(23, false);
   if (verbose) Serial.println("-End Radio Init-");
 }
+
+// Messaging Stuff
+// wrapper on RHReliableDatagram constructor
+ffMessenger::ffMessenger(RHGenericDriver& driver, uint8_t thisAddress) : RHReliableDatagram(driver, thisAddress) {}
+
+void ffMessenger::startup(bool verbose = true) {
+  if (verbose) Serial.println("Messenger Startup...");
+if (!RHReliableDatagram::init() && verbose) Serial.println("Messenger Init - FAIL");
+  if (RHReliableDatagram::init() && verbose) Serial.println("Messenger Init - OK");
+
+}
