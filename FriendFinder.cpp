@@ -82,7 +82,7 @@ uint32_t ffNeoRing::colorWheel(byte WheelPos) {
 }
 
 // wrapper on Adafruit_GPS constructor
-ffGPS::ffGPS(HardwareSerial *ser) : Adafruit_GPS(ser) {}
+ffGPS::ffGPS(HardwareSerial* ser) : Adafruit_GPS(ser) {}
 
 void ffGPS::startup(bool verbose) {
   Adafruit_GPS::begin(9600);
@@ -124,9 +124,7 @@ void ffGPS::startup(bool verbose) {
   // Serial.println(PMTK_Q_RELEASE);
 }
 
-
-
-void ffGPS::update(bool verbose = true) {
+void ffGPS::update(bool verbose) {
   char c = Adafruit_GPS::read();
 
   if (Adafruit_GPS::newNMEAreceived()) {
@@ -159,9 +157,9 @@ void ffGPS::update(bool verbose = true) {
   }
 }
 
-void ffGPS::print(bool verbose = true) {
+void ffGPS::print(bool verbose) {
   Serial.println("***     Parsed GPS Data:     ***");
-  if (Adafruit_GPS::fixquality == B0) {  // note use of binary "BO"
+  if (Adafruit_GPS::fixquality == B0) {  // note use of binary "B0"
     Serial.print("Time: ");
     Serial.print(Adafruit_GPS::hour, DEC);
     Serial.print(':');
@@ -175,7 +173,7 @@ void ffGPS::print(bool verbose = true) {
     Serial.println("(No Location Fix)");
   }
 
-  if (Adafruit_GPS::fixquality > B0) {  // note use of binary "BO"
+  if (Adafruit_GPS::fixquality > B0) {  // note use of binary "B0"
     Serial.println("*GPS Fix*");
     Serial.print("Time: ");
     Serial.print(Adafruit_GPS::hour, DEC);
@@ -206,12 +204,11 @@ void ffGPS::print(bool verbose = true) {
   }
 }
 
-
 // Radio Stuff
 // wrapper on RH_RF95 constructor
 ffRadio::ffRadio(uint8_t csPin, uint8_t intPin) : RH_RF95(csPin, intPin) {}
 
-void ffRadio::startup(bool verbose = true) {
+void ffRadio::startup(bool verbose) {
   if (verbose) Serial.println("Radio Startup...");
 
   // Manual Reset
@@ -237,11 +234,74 @@ void ffRadio::startup(bool verbose = true) {
 
 // Messaging Stuff
 // wrapper on RHReliableDatagram constructor
-ffMessenger::ffMessenger(RHGenericDriver& driver, uint8_t thisAddress) : RHReliableDatagram(driver, thisAddress) {}
+ffMessenger::ffMessenger(RHGenericDriver& driver, uint8_t thisAddress)
+    : RHReliableDatagram(driver, thisAddress) {}
 
-void ffMessenger::startup(bool verbose = true) {
+void ffMessenger::startup(bool verbose) {
   if (verbose) Serial.println("Messenger Startup...");
-if (!RHReliableDatagram::init() && verbose) Serial.println("Messenger Init - FAIL");
-  if (RHReliableDatagram::init() && verbose) Serial.println("Messenger Init - OK");
+  if (!RHReliableDatagram::init() && verbose)
+    Serial.println("Messenger Init - FAIL");
+  if (RHReliableDatagram::init() && verbose)
+    Serial.println("Messenger Init - OK");
+}
 
+void ffMessenger::printPacket(dataPacket packet) {
+  Serial.print("Latitude (fixed width): ");
+  Serial.println(packet.latitude_fixed);
+  Serial.print("Longitude (fixed width): ");
+  Serial.println(packet.longitude_fixed);
+  Serial.print("Fix Qual: ");
+  Serial.println(packet.fixquality);
+  Serial.print("Satellites: ");
+  Serial.println(packet.satellites);
+  // Convert HDOP back to float for printing.
+  float HDOP;
+  HDOP = (float)packet.HDOP / 100;
+  Serial.print("HDOP: ");
+  Serial.println(HDOP);
+}
+
+void ffMessenger::check(bool verbose) {
+  if (RHReliableDatagram::available()) {
+    // Wait for a message addressed to us from the client
+    // uint8_t len = sizeof(buf);
+    // What address is this from?
+    uint8_t from;
+    if (RHReliableDatagram::recvfromAck(buf, &len)) {
+      // copy message to inpacket
+      memcpy(&inPacket, buf, sizeof(inPacket));
+      if (verbose) {
+        Serial.print("got request from : 0x");
+        Serial.print(from, HEX);
+        Serial.print(": ");
+        for (int i = 0; i < (RH_RF95_MAX_MESSAGE_LEN - 1); i++) {
+          Serial.print(buf[i], HEX);
+          // Serial.print(" ");
+        }
+        Serial.println();
+      }
+
+      // // Send a reply back to the originator client
+      // if (!manager.sendtoWait(data, sizeof(data), from))
+      //   Serial.println("sendtoWait failed");
+    }
+  }
+}
+
+// This should build the outPacket (with my status)
+// and eventually also process incoming messages variously
+// such as adding timestamps so we know how old the messages are.
+void ffMessenger::update(bool verbose, ffGPS myGPS) {
+  if (myGPS.fixquality == B0) {
+    outPacket.fixquality = 0;
+    if (verbose) Serial.println("Messenger: No GPS Fix");
+}
+ if (myGPS.fixquality > B0) {
+  outPacket.latitude_fixed = myGPS.latitude_fixed;
+  outPacket.longitude_fixed = myGPS.longitude_fixed;
+  outPacket.fixquality = myGPS.fixquality;
+  outPacket.satellites = myGPS.satellites;
+  outPacket.HDOP = myGPS.HDOP;
+  if (verbose) Serial.println("Messenger: GPS Fix, updated outPacket");
+}
 }

@@ -3,6 +3,7 @@
         {
             "name": "Win32",
             "includePath": [
+                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\samd\\1.2.9\\**",
                 "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\avr\\1.4.13\\**",
                 "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\samd\\1.2.9",
                 "${workspaceRoot}",
@@ -13,6 +14,7 @@
                 "C:\\Users\\Clayton\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel"
             ],
             "forcedInclude": [
+                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\samd\\1.2.9\\cores\\arduino\\Arduino.h",
                 "${workspaceRoot}",
                 "${workspaceRoot}\\src"
             ],

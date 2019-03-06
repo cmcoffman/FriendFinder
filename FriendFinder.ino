@@ -1,6 +1,5 @@
 #include "FriendFinder.h"
 
-
 // Neopixel Ring Stuff
 #define NUMPIXELS 24
 // Strip is connected to Arduino Pin 5
@@ -17,12 +16,10 @@ ffGPS GPS = ffGPS(&GPSSerial);
 // #define RFM95_RST 11
 // #define RFM95_INT 10
 
-
 // for Feather32u4 RFM9x
-  #define RFM95_CS 8
-  #define RFM95_RST 4
-  #define RFM95_INT 7
-
+#define RFM95_CS 8
+#define RFM95_RST 4
+#define RFM95_INT 7
 
 /* for feather m0 RFM9x
   #define RFM95_CS 8
@@ -33,7 +30,6 @@ ffGPS GPS = ffGPS(&GPSSerial);
 #define CLIENT_ADDRESS 1
 #define SERVER_ADDRESS 2
 
-
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
 
@@ -42,7 +38,8 @@ ffMessenger messenger(radio, SERVER_ADDRESS);
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial && millis() < 5000);
+  while (!Serial && millis() < 5000)
+    ;
   delay(500);
   Serial.println("Starting NeoEffects Test");
   ring.begin();
@@ -50,18 +47,18 @@ void setup() {
   ring.show();
 
   GPS.startup();
-  radio.startup();
-  messenger.startup();
-
-
+  radio.startup(true);
+  messenger.startup(true);
 }
 
 // Conveinient timer construct (at end of loop)
 uint32_t timer = millis();
 
 void loop() {
-  //delay(100);
+  // delay(100);
   GPS.update(true);
+  messenger.check(true);
+  //messenger.update(true, GPS);
   if (millis() < 10000) {
     ring.colorDotWipe(ring.Blue, 50);
     ring.colorWipe(ring.randomColor(), 50);
@@ -71,14 +68,13 @@ void loop() {
     ring.show();
   }
 
-    // if millis() or timer wraps around, we'll just reset it
+  // if millis() or timer wraps around, we'll just reset it
   if (timer > millis()) timer = millis();
   // approximately every 2 seconds or so, print out the current stats
   if (millis() - timer > 5000) {
     timer = millis();  // reset the timer
     Serial.println("*heartbeat*");
     Serial.println(GPS.latitude_fixed);
-
-
+    messenger.update(true, GPS);
   }
 }
