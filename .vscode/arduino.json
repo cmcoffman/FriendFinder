@@ -1,6 +1,6 @@
 {
     "sketch": "FriendFinder.ino",
-    "board": "adafruit:samd:adafruit_feather_m0_express",
+    "board": "adafruit:avr:feather32u4",
     "programmer": "AVRISP mkII",
     "port": "COM17",
     "output": "C:\\Users\\Clayton\\Documents\\Arduino\\build"

@@ -16,25 +16,20 @@ ffGPS GPS = ffGPS(&GPSSerial);
 // #define RFM95_RST 11
 // #define RFM95_INT 10
 
-// for Feather32u4 RFM9x
+// // for Feather32u4 RFM9x
 #define RFM95_CS 8
 #define RFM95_RST 4
 #define RFM95_INT 7
 
-/* for feather m0 RFM9x
-  #define RFM95_CS 8
-  #define RFM95_RST 4
-  #define RFM95_INT 3
-*/
 
-#define CLIENT_ADDRESS 1
-#define SERVER_ADDRESS 2
+#define PROTOBOARD_ADDRESS 1
+#define BEACON_ADDRESS 2
 
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
 
 ffRadio radio(RFM95_CS, RFM95_INT);
-ffMessenger messenger(radio, SERVER_ADDRESS);
+ffMessenger messenger(radio, BEACON_ADDRESS);
 
 void setup() {
   Serial.begin(115200);
@@ -42,11 +37,11 @@ void setup() {
     ;
   delay(500);
   Serial.println("Starting NeoEffects Test");
-  ring.begin();
-  ring.clearStrip();
-  ring.show();
+  // ring.begin();
+  // ring.clearStrip();
+  // ring.show();
 
-  GPS.startup();
+  //GPS.startup();
   radio.startup(true);
   messenger.startup(true);
 }
@@ -56,17 +51,17 @@ uint32_t timer = millis();
 
 void loop() {
   // delay(100);
-  GPS.update(true);
+  //GPS.update(true);
   messenger.check(true);
   //messenger.update(true, GPS);
-  if (millis() < 10000) {
-    ring.colorDotWipe(ring.Blue, 50);
-    ring.colorWipe(ring.randomColor(), 50);
-    ring.colorDot(1, ring.Red);
-  } else {
-    ring.clearStrip();
-    ring.show();
-  }
+  // if (millis() < 10000) {
+  //   ring.colorDotWipe(ring.Blue, 20);
+  //   ring.colorWipe(ring.randomColor(), 20);
+  //   ring.colorDot(1, ring.Red);
+  // } else {
+  //   ring.clearStrip();
+  //   ring.show();
+  // }
 
   // if millis() or timer wraps around, we'll just reset it
   if (timer > millis()) timer = millis();
@@ -74,7 +69,11 @@ void loop() {
   if (millis() - timer > 5000) {
     timer = millis();  // reset the timer
     Serial.println("*heartbeat*");
-    Serial.println(GPS.latitude_fixed);
+
     messenger.update(true, GPS);
+    messenger.printPacket(messenger.outPacket);
+      if (GPS.fixquality > B0) {
+        messenger.send(true, PROTOBOARD_ADDRESS);
   }
+}
 }

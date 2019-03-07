@@ -71,17 +71,17 @@ class ffGPS : public Adafruit_GPS {
 
 // Radio Stuff
 // for Prototype Board
-#define RFM95_CS 6
-#define RFM95_RST 11
-#define RFM95_INT 10
+// #define RFM95_CS 6
+// #define RFM95_RST 11
+// #define RFM95_INT 10
 
 // #define CLIENT_ADDRESS 1
 // #define SERVER_ADDRESS 2
 
 // for Feather32u4 RFM9x
-//#define RFM95_CS 8
-//#define RFM95_RST 4
-//#define RFM95_INT 7
+#define RFM95_CS 8
+#define RFM95_RST 4
+#define RFM95_INT 7
 
 /* for feather m0 RFM9x
   #define RFM95_CS 8
@@ -98,7 +98,7 @@ struct dataPacket {
   uint32_t longitude_fixed;  // 4 bytes
   uint8_t fixquality;        // 1 byte
   uint8_t satellites;        // 1 byte
-  uint16_t HDOP;             // 4 bytes
+  uint16_t HDOP;             // 2 bytes
 };
 
 class ffRadio : public RH_RF95 {
@@ -120,14 +120,16 @@ class ffMessenger : public RHReliableDatagram {
   void printPacket(dataPacket packet);
   void check(bool verbose = true);
   void update(bool verbose, ffGPS myGPS);
+  void send(bool verbose, uint8_t to);
 
   // Ingoing and Outgoing Datapackets
   dataPacket inPacket;
   dataPacket outPacket;
 
   // Message Recieve Buffer
-  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
+  uint8_t inBuf[RH_RF95_MAX_MESSAGE_LEN];
+  uint8_t outBuf[RH_RF95_MAX_MESSAGE_LEN];
+  uint8_t len = sizeof(inBuf);
 };
 
 #endif  // Close Library

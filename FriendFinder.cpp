@@ -246,6 +246,7 @@ void ffMessenger::startup(bool verbose) {
 }
 
 void ffMessenger::printPacket(dataPacket packet) {
+  Serial.println("Packet Contents:");
   Serial.print("Latitude (fixed width): ");
   Serial.println(packet.latitude_fixed);
   Serial.print("Longitude (fixed width): ");
@@ -267,15 +268,15 @@ void ffMessenger::check(bool verbose) {
     // uint8_t len = sizeof(buf);
     // What address is this from?
     uint8_t from;
-    if (RHReliableDatagram::recvfromAck(buf, &len)) {
+    if (RHReliableDatagram::recvfromAck(inBuf, &len)) {
       // copy message to inpacket
-      memcpy(&inPacket, buf, sizeof(inPacket));
+      memcpy(&inPacket, inBuf, sizeof(inPacket));
       if (verbose) {
         Serial.print("got request from : 0x");
         Serial.print(from, HEX);
         Serial.print(": ");
         for (int i = 0; i < (RH_RF95_MAX_MESSAGE_LEN - 1); i++) {
-          Serial.print(buf[i], HEX);
+          Serial.print(inBuf[i], HEX);
           // Serial.print(" ");
         }
         Serial.println();
@@ -295,13 +296,40 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
   if (myGPS.fixquality == B0) {
     outPacket.fixquality = 0;
     if (verbose) Serial.println("Messenger: No GPS Fix");
+  }
+  if (myGPS.fixquality > B0) {
+    outPacket.latitude_fixed = myGPS.latitude_fixed;
+    outPacket.longitude_fixed = myGPS.longitude_fixed;
+    outPacket.fixquality = myGPS.fixquality;
+    outPacket.satellites = myGPS.satellites;
+    outPacket.HDOP = myGPS.HDOP;
+    if (verbose) Serial.println("Messenger: GPS Fix, updated outPacket");
+  }
 }
- if (myGPS.fixquality > B0) {
-  outPacket.latitude_fixed = myGPS.latitude_fixed;
-  outPacket.longitude_fixed = myGPS.longitude_fixed;
-  outPacket.fixquality = myGPS.fixquality;
-  outPacket.satellites = myGPS.satellites;
-  outPacket.HDOP = myGPS.HDOP;
-  if (verbose) Serial.println("Messenger: GPS Fix, updated outPacket");
-}
+
+void ffMessenger::send(bool verbose, uint8_t to) {
+  // just broadcast
+  // to = 255;
+  // Serial.println("copying data to outbuffer..");
+  // memcpy(&inPacket, inBuf, sizeof(inPacket));
+  // memcpy(&outBuf, &outPacket, sizeof(outPacket));
+  if (verbose) {
+    Serial.print("Sending to : 0x");
+    Serial.print(to, HEX);
+    Serial.print(": ");
+    for (int i = 0; i < 12; i++) {
+      Serial.print(outBuf[i], HEX);
+      Serial.print(" ");
+    }
+    Serial.println();
+  }
+  // Send a reply back to the originator client
+  Serial.println("sending message..");
+  if (!RHReliableDatagram::sendtoWait((uint8_t*)&outPacket, sizeof(outPacket),
+                                      to)) {
+    if (verbose) Serial.println("Messenger Send: Did not recieve ack.");
+  } else {
+    if (verbose) Serial.println("Messenger Send: Delivery Confirmed");
+  }
+
 }
