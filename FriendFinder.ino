@@ -1,47 +1,22 @@
 #include "FriendFinder.h"
 
-// Neopixel Ring Stuff
-#define NUMPIXELS 24
-// Strip is connected to Arduino Pin 5
-#define NEOPIXEL_RING_PIN 5
+
+
 ffNeoRing ring = ffNeoRing(NUMPIXELS, NEOPIXEL_RING_PIN, NEO_GRB + NEO_KHZ800);
-
-// GPS Stuff
-#define GPSSerial Serial1
 ffGPS GPS = ffGPS(&GPSSerial);
-
-// Radio Stuff
-// for Prototype Board
-// #define RFM95_CS 6
-// #define RFM95_RST 11
-// #define RFM95_INT 10
-
-// // for Feather32u4 RFM9x
-#define RFM95_CS 8
-#define RFM95_RST 4
-#define RFM95_INT 7
-
-
-#define PROTOBOARD_ADDRESS 1
-#define BEACON_ADDRESS 2
-
-// Change to 434.0 or other frequency, must match RX's freq!
-#define RF95_FREQ 915.0
-
 ffRadio radio(RFM95_CS, RFM95_INT);
-ffMessenger messenger(radio, BEACON_ADDRESS);
+ffMessenger messenger(radio, MY_ADDRESS);
 
 void setup() {
   Serial.begin(115200);
-  while (!Serial && millis() < 5000)
-    ;
+  while (!Serial && millis() < 5000);
   delay(500);
   Serial.println("Starting NeoEffects Test");
-  // ring.begin();
-  // ring.clearStrip();
-  // ring.show();
+   ring.begin();
+   ring.clearStrip();
+   ring.show();
 
-  //GPS.startup();
+  GPS.startup(true);
   radio.startup(true);
   messenger.startup(true);
 }
@@ -50,30 +25,33 @@ void setup() {
 uint32_t timer = millis();
 
 void loop() {
-  // delay(100);
-  //GPS.update(true);
+  delay(100);
+  GPS.update(true);
   messenger.check(true);
-  //messenger.update(true, GPS);
-  // if (millis() < 10000) {
-  //   ring.colorDotWipe(ring.Blue, 20);
-  //   ring.colorWipe(ring.randomColor(), 20);
-  //   ring.colorDot(1, ring.Red);
-  // } else {
-  //   ring.clearStrip();
-  //   ring.show();
-  // }
+  messenger.update(false, GPS);
+  if (millis() < 10000) {
+    ring.colorDotWipe(ring.Blue, 20);
+    ring.colorWipe(ring.randomColor(), 20);
+    ring.colorDot(1, ring.Red);
+  } else {
+    ring.clearStrip();
+    ring.show();
+  }
 
   // if millis() or timer wraps around, we'll just reset it
   if (timer > millis()) timer = millis();
   // approximately every 2 seconds or so, print out the current stats
   if (millis() - timer > 5000) {
     timer = millis();  // reset the timer
-    Serial.println("*heartbeat*");
+    Serial.println("*Beacon heartbeat*");
 
-    messenger.update(true, GPS);
+    //messenger.update(true, GPS);
+    Serial.println("IN Packet:");
+    messenger.printPacket(messenger.inPacket);
+    Serial.println("OUT Packet:");
     messenger.printPacket(messenger.outPacket);
-      if (GPS.fixquality > B0) {
-        messenger.send(true, PROTOBOARD_ADDRESS);
-  }
+      // if (GPS.fixquality > B0) {
+        messenger.send(true, 255);
+  // }
 }
 }

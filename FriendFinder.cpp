@@ -327,9 +327,13 @@ void ffMessenger::send(bool verbose, uint8_t to) {
   Serial.println("sending message..");
   if (!RHReliableDatagram::sendtoWait((uint8_t*)&outPacket, sizeof(outPacket),
                                       to)) {
-    if (verbose) Serial.println("Messenger Send: Did not recieve ack.");
+
+
+    if (verbose && to != 255) Serial.println("Messenger Send: Did not recieve ack.");
+    if (verbose && to == 255) Serial.println("Messenger Send: Message Broadcast, no ack expected.");
   } else {
-    if (verbose) Serial.println("Messenger Send: Delivery Confirmed");
+    if (verbose && to != 255) Serial.println("Messenger Send: Delivery Confirmed");
+    if (verbose && to == 255) Serial.println("Messenger Send: Message Broadcast, no ack expected.");
   }
 
 }
