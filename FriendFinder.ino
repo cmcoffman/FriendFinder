@@ -19,24 +19,20 @@ void setup() {
   GPS.startup(true);
   radio.startup(true);
   messenger.startup(true);
+
+  ring.colorDotWipe(ring.Blue, 20);
+    ring.colorWipe(ring.randomColor(), 20);
+    ring.clearStrip();
+    ring.show();
 }
 
 // Conveinient timer construct (at end of loop)
 uint32_t timer = millis();
 
 void loop() {
-  delay(100);
-  GPS.update(true);
+  GPS.update(false);
   messenger.check(true);
   messenger.update(false, GPS);
-  if (millis() < 10000) {
-    ring.colorDotWipe(ring.Blue, 20);
-    ring.colorWipe(ring.randomColor(), 20);
-    ring.colorDot(1, ring.Red);
-  } else {
-    ring.clearStrip();
-    ring.show();
-  }
 
   // if millis() or timer wraps around, we'll just reset it
   if (timer > millis()) timer = millis();
@@ -46,10 +42,27 @@ void loop() {
     Serial.println("*Beacon heartbeat*");
 
     //messenger.update(true, GPS);
-    Serial.println("IN Packet:");
+    Serial.println("----InPacket:----");
     messenger.printPacket(messenger.inPacket);
-    Serial.println("OUT Packet:");
+        Serial.println("-----------------");
+    Serial.println("----OutPacket:----");
     messenger.printPacket(messenger.outPacket);
+    Serial.println("-----------------");
+
+    Serial.println("----Distance in meters:----");
+    float dist = messenger.calcDistance(messenger.outPacket.latitude_fixed,
+                                        messenger.outPacket.longitude_fixed,
+                                        messenger.inPacket.latitude_fixed,
+                                        messenger.inPacket.longitude_fixed);
+    Serial.println(dist, 3);
+    Serial.println("-----------------");
+        Serial.println("----Haversine Distance in meters:----");
+    float dist2 = messenger.haversine(messenger.outPacket.latitude_fixed,
+                                        messenger.outPacket.longitude_fixed,
+                                        messenger.inPacket.latitude_fixed,
+                                        messenger.inPacket.longitude_fixed);
+    Serial.println(dist2, 6);
+    Serial.println("-----------------");
       // if (GPS.fixquality > B0) {
         messenger.send(true, 255);
   // }

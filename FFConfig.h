@@ -81,5 +81,6 @@
 
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
+#endif
 
 #endif  // Close Library

@@ -70,8 +70,6 @@ class ffGPS : public Adafruit_GPS {
   //   uint8_t fixquality, satellites;
 };
 
-
-
 // Data Packet
 struct dataPacket {
   uint32_t latitude_fixed;   // 4 bytes
@@ -79,6 +77,14 @@ struct dataPacket {
   uint8_t fixquality;        // 1 byte
   uint8_t satellites;        // 1 byte
   uint16_t HDOP;             // 2 bytes
+};
+
+// Friends Loc and Distance
+struct friendDB {
+  int distance_meters;
+  int heading_degrees;
+  int age_seconds;
+  int quality;
 };
 
 class ffRadio : public RH_RF95 {
@@ -96,15 +102,25 @@ class ffMessenger : public RHReliableDatagram {
  public:
   // Constructor
   ffMessenger(RHGenericDriver& driver, uint8_t thisAddress);
+
+  // Methods
   void startup(bool verbose = true);
   void printPacket(dataPacket packet);
   void check(bool verbose = true);
   void update(bool verbose, ffGPS myGPS);
   void send(bool verbose, uint8_t to);
-
+  float calcDistance(uint32_t my_lat, uint32_t my_long, uint32_t their_lat,
+                     uint32_t their_long);
+  uint16_t haversine(double lat1, double lon1, double lat2, double lon2);
   // Ingoing and Outgoing Datapackets
   dataPacket inPacket;
   dataPacket outPacket;
+
+  // Friend Message Array (holds ten friends as is)
+  dataPacket friend_msgs[10];
+
+  // Summarized Friend Location Data
+  friendDB friend_locs[10];
 
   // Message Recieve Buffer
   uint8_t inBuf[RH_RF95_MAX_MESSAGE_LEN];

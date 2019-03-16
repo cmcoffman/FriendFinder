@@ -4,6 +4,8 @@
 
 #include "FriendFinder.h"
 #include <Adafruit_NeoPixel.h>
+#include <TinyGPS.h>
+#include <math.h>
 
 const uint32_t ffNeoRing::Red = Adafruit_NeoPixel::Color(255, 0, 0);
 const uint32_t ffNeoRing::Green = Adafruit_NeoPixel::Color(0, 255, 0);
@@ -268,9 +270,10 @@ void ffMessenger::check(bool verbose) {
     // uint8_t len = sizeof(buf);
     // What address is this from?
     uint8_t from;
-    if (RHReliableDatagram::recvfromAck(inBuf, &len)) {
+    if (RHReliableDatagram::recvfromAck(inBuf, &len, &from)) {
       // copy message to inpacket
       memcpy(&inPacket, inBuf, sizeof(inPacket));
+      // memcpy(&friendDB[from], inBuf, sizeof(inPacket));
       if (verbose) {
         Serial.print("got request from : 0x");
         Serial.print(from, HEX);
@@ -327,13 +330,55 @@ void ffMessenger::send(bool verbose, uint8_t to) {
   Serial.println("sending message..");
   if (!RHReliableDatagram::sendtoWait((uint8_t*)&outPacket, sizeof(outPacket),
                                       to)) {
-
-
-    if (verbose && to != 255) Serial.println("Messenger Send: Did not recieve ack.");
-    if (verbose && to == 255) Serial.println("Messenger Send: Message Broadcast, no ack expected.");
+    if (verbose && to != 255)
+      Serial.println("Messenger Send: Did not recieve ack.");
+    if (verbose && to == 255)
+      Serial.println("Messenger Send: Message Broadcast, no ack expected.");
   } else {
-    if (verbose && to != 255) Serial.println("Messenger Send: Delivery Confirmed");
-    if (verbose && to == 255) Serial.println("Messenger Send: Message Broadcast, no ack expected.");
+    if (verbose && to != 255)
+      Serial.println("Messenger Send: Delivery Confirmed");
+    if (verbose && to == 255)
+      Serial.println("Messenger Send: Message Broadcast, no ack expected.");
   }
+}
 
+float ffMessenger::calcDistance(uint32_t my_lat, uint32_t my_long,
+                                uint32_t their_lat, uint32_t their_long) {
+  // float TinyGPS::distance_between (float lat1, float long1, float lat2, float
+  // long2)
+  // returns value in meters
+  my_lat /= 10000000;
+  my_long /= 10000000;
+  their_lat /= 10000000;
+  their_long /= 10000000;
+  float distance =
+      TinyGPS::distance_between(my_lat, my_long, their_lat, their_long);
+  return distance;
+}
+
+uint16_t ffMessenger::haversine(double lat1, double lon1, double lat2,
+                              double lon2) {
+  // cribbed from
+  // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
+  // convert back to floating point
+  lat1 /= 10000000;
+  lon1 /= 10000000;
+  lat2 /= 10000000;
+  lon2 /= 10000000;
+  // distance between latitudes
+  // and longitudes
+  double dLat = (lat2 - lat1) * M_PI / 180.0;
+  double dLon = (lon2 - lon1) * M_PI / 180.0;
+
+  // convert to radians
+  lat1 = (lat1)*M_PI / 180.0;
+  lat2 = (lat2)*M_PI / 180.0;
+
+  // apply formulae
+  double a =
+      pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1) * cos(lat2);
+  double rad = 6371;
+  double c = 2 * asin(sqrt(a));
+  uint16_t int_meters = round(rad * c * 1000);
+  return int_meters;
 }
