@@ -5,6 +5,11 @@
 #include <Adafruit_NeoPixel.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
+#include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
+
 #include "FFConfig.h"
 
 class ffNeoRing : public Adafruit_NeoPixel {
@@ -17,9 +22,10 @@ class ffNeoRing : public Adafruit_NeoPixel {
   void clearStrip();
   void fillStrip(uint32_t c);
   void show(void);
-  void colorDotWipe(uint32_t c, uint8_t wait);
-  void colorWipe(uint32_t c, uint8_t wait);
+  void colorDotWipe(uint32_t c, uint16_t wait);
+  void colorWipe(uint32_t c, uint16_t wait);
   void colorDot(int pixel, uint32_t color);
+  void flash();
 
   // helper functions dealing with Adafruit_NeoPixel::Color (32 bit color)
   static uint32_t randomColor(void) {
@@ -119,6 +125,11 @@ class ffMessenger : public RHReliableDatagram {
   // Friend Message Array (holds ten friends as is)
   dataPacket friend_msgs[10];
 
+  // Time since last Message
+  unsigned long time_of_last_msg;
+  unsigned long time_of_last_check;
+  unsigned long time_since_last_msg;
+
   // Summarized Friend Location Data
   friendDB friend_locs[10];
 
@@ -127,5 +138,24 @@ class ffMessenger : public RHReliableDatagram {
   uint8_t outBuf[RH_RF95_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(inBuf);
 };
+
+class ffIMU : public Adafruit_BNO055 {
+ private:
+ public:
+  // Constructor
+  ffIMU();
+
+  // Methods
+  void startup(bool verbose = true);
+  void update(bool verbose = true);
+  void displaySensorDetails();
+  void displaySensorStatus();
+  void displayCalStatus();
+
+  // Event
+  sensors_event_t event;
+
+};
+
 
 #endif  // Close Library

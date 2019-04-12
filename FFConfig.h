@@ -1,6 +1,12 @@
 #ifndef _FRIENDFINDERCONFIG_
 #define _FRIENDFINDERCONFIG_
 
+/* Set the delay between fresh samples */
+#define BNO055_SAMPLERATE_DELAY_MS (100)
+
+#define ESP32_ADDRESS 1
+#define PROTBOARD_ADDRESS 2
+#define BEACON_ADDRESS 3
 
 #ifdef ARDUINO_FEATHER_ESP32
 // Neopixel Ring Stuff-----
@@ -25,7 +31,8 @@
 // #define RFM95_INT 7
 
 
-#define MY_ADDRESS 1
+#define MY_ADDRESS ESP32_ADDRESS
+#define FRIEND_ADDRESS PROTBOARD_ADDRESS
 //#define BEACON_ADDRESS 2
 
 // Change to 434.0 or other frequency, must match RX's freq!
@@ -49,8 +56,8 @@
 #define RFM95_RST 11
 #define RFM95_INT 10
 
-#define MY_ADDRESS 2
-//#define BEACON_ADDRESS 2
+#define MY_ADDRESS PROTBOARD_ADDRESS
+#define FRIEND_ADDRESS ESP32_ADDRESS
 
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
@@ -76,8 +83,8 @@
 #define RFM95_INT 7
 
 
-#define MY_ADDRESS 3
-//#define BEACON_ADDRESS 2
+#define MY_ADDRESS BEACON_ADDRESS
+#define FRIEND_ADDRESS 1
 
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0

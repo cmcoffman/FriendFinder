@@ -22,7 +22,7 @@ ffNeoRing::ffNeoRing(uint16_t n, uint8_t p, uint8_t t)
     : Adafruit_NeoPixel(n, p, t) {}
 
 // Color Dot Runs around ring
-void ffNeoRing::colorDotWipe(uint32_t c, uint8_t wait) {
+void ffNeoRing::colorDotWipe(uint32_t c, uint16_t wait) {
   for (uint16_t i = 0; i < numPixels(); i++) {
     setPixelColor(i, c);
     setPixelColor(i - 1, Adafruit_NeoPixel::Color(0, 0, 0));
@@ -34,11 +34,11 @@ void ffNeoRing::colorDotWipe(uint32_t c, uint8_t wait) {
 }
 
 // Fill Whole Ring with color
-void ffNeoRing::colorWipe(uint32_t c, uint8_t wait) {
+void ffNeoRing::colorWipe(uint32_t c, uint16_t wait) {
   for (uint16_t i = 0; i < numPixels(); i++) {
     setPixelColor(i, c);
     show();
-    delay(wait);
+    delayMicroseconds(wait);
   }
 }
 
@@ -51,6 +51,19 @@ void ffNeoRing::colorDot(int pixel, uint32_t color) {
     }
     show();
   }
+}
+
+void ffNeoRing::flash() {
+  for (int j = 255; j > 0; j--) {
+    for (uint16_t i = 0; i < numPixels(); i++) {
+      setPixelColor(i, Color(j / 1.1, j / 1.1, j / 1.1));
+    }
+    delayMicroseconds(50);
+    show();
+  }
+  delay(1);
+  ffNeoRing::clearStrip();
+  ffNeoRing::show();
 }
 
 // overload the base class show to check if stripChanged
@@ -229,7 +242,7 @@ void ffRadio::startup(bool verbose) {
   if (!RH_RF95::setFrequency(RF95_FREQ) && verbose) Serial.println("[FAIL]");
   if (RH_RF95::setFrequency(RF95_FREQ) && verbose) Serial.println("[Succeed]");
 
-  if (verbose) Serial.println("Set Radio power...");
+  if (verbose) Serial.println("Set Radio power...[?]");
   RH_RF95::setTxPower(23, false);
   if (verbose) Serial.println("-End Radio Init-");
 }
@@ -265,6 +278,8 @@ void ffMessenger::printPacket(dataPacket packet) {
 }
 
 void ffMessenger::check(bool verbose) {
+  // record time this check was made
+  time_of_last_check = millis();
   if (RHReliableDatagram::available()) {
     // Wait for a message addressed to us from the client
     // uint8_t len = sizeof(buf);
@@ -274,6 +289,8 @@ void ffMessenger::check(bool verbose) {
       // copy message to inpacket
       memcpy(&inPacket, inBuf, sizeof(inPacket));
       // memcpy(&friendDB[from], inBuf, sizeof(inPacket));
+      // reset time since last message
+      time_of_last_msg = millis();
       if (verbose) {
         Serial.print("got request from : 0x");
         Serial.print(from, HEX);
@@ -290,6 +307,7 @@ void ffMessenger::check(bool verbose) {
       //   Serial.println("sendtoWait failed");
     }
   }
+  time_since_last_msg = millis() - time_of_last_msg;
 }
 
 // This should build the outPacket (with my status)
@@ -357,7 +375,7 @@ float ffMessenger::calcDistance(uint32_t my_lat, uint32_t my_long,
 }
 
 uint16_t ffMessenger::haversine(double lat1, double lon1, double lat2,
-                              double lon2) {
+                                double lon2) {
   // cribbed from
   // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
   // convert back to floating point
@@ -381,4 +399,125 @@ uint16_t ffMessenger::haversine(double lat1, double lon1, double lat2,
   double c = 2 * asin(sqrt(a));
   uint16_t int_meters = round(rad * c * 1000);
   return int_meters;
+}
+
+// Compass Stuff
+// wrapper on Adafruit_Sensor constructor
+ffIMU::ffIMU() : Adafruit_BNO055(55) {}
+
+void ffIMU::startup(bool verbose) {
+  if (verbose) Serial.println("IMU Startup...");
+  Adafruit_BNO055::setExtCrystalUse(true);
+
+  /* Initialise the sensor */
+  bool init = Adafruit_BNO055::begin();
+  if (!init && verbose) Serial.println("IMU Init - FAIL");
+  if (init && verbose) {
+  Serial.println("IMU Init - OK");
+
+  /* Display some basic information on this sensor */
+  ffIMU::displaySensorDetails();
+
+  /* Optional: Display current status */
+  ffIMU::displaySensorStatus();
+  }
+  if (verbose) Serial.println("-End IMU Init-");
+}
+
+/**************************************************************************/
+/*
+    Displays some basic information on this sensor from the unified
+    sensor API sensor_t type (see Adafruit_Sensor for more information)
+*/
+/**************************************************************************/
+void ffIMU::displaySensorDetails() {
+  sensor_t sensor;
+  Adafruit_BNO055::getSensor(&sensor);
+  Serial.println("------------------------------------");
+  Serial.print("Sensor:       ");
+  Serial.println(sensor.name);
+  Serial.print("Driver Ver:   ");
+  Serial.println(sensor.version);
+  Serial.print("Unique ID:    ");
+  Serial.println(sensor.sensor_id);
+  Serial.print("Max Value:    ");
+  Serial.print(sensor.max_value);
+  Serial.println(" xxx");
+  Serial.print("Min Value:    ");
+  Serial.print(sensor.min_value);
+  Serial.println(" xxx");
+  Serial.print("Resolution:   ");
+  Serial.print(sensor.resolution);
+  Serial.println(" xxx");
+  Serial.println("------------------------------------");
+  Serial.println("");
+  delay(500);
+}
+
+/**************************************************************************/
+/*
+    Display some basic info about the sensor status
+*/
+/**************************************************************************/
+void ffIMU::displaySensorStatus() {
+  /* Get the system status values (mostly for debugging purposes) */
+  uint8_t system_status, self_test_results, system_error;
+  system_status = self_test_results = system_error = 0;
+  Adafruit_BNO055::getSystemStatus(&system_status, &self_test_results,
+                                   &system_error);
+
+  /* Display the results in the Serial Monitor */
+  Serial.println("");
+  Serial.print("System Status: 0x");
+  Serial.println(system_status, HEX);
+  Serial.print("Self Test:     0x");
+  Serial.println(self_test_results, HEX);
+  Serial.print("System Error:  0x");
+  Serial.println(system_error, HEX);
+  Serial.println("");
+  delay(500);
+}
+
+/**************************************************************************/
+/*
+    Display sensor calibration status
+*/
+/**************************************************************************/
+void ffIMU::displayCalStatus() {
+  /* Get the four calibration values (0..3) */
+  /* Any sensor data reporting 0 should be ignored, */
+  /* 3 means 'fully calibrated" */
+  uint8_t system, gyro, accel, mag;
+  system = gyro = accel = mag = 0;
+  Adafruit_BNO055::getCalibration(&system, &gyro, &accel, &mag);
+
+  /* The data should be ignored until the system calibration is > 0 */
+  Serial.print("\t");
+  if (!system) {
+    Serial.print("! ");
+  }
+
+  /* Display the individual values */
+  Serial.print("Sys:");
+  Serial.print(system, DEC);
+  Serial.print(" G:");
+  Serial.print(gyro, DEC);
+  Serial.print(" A:");
+  Serial.print(accel, DEC);
+  Serial.print(" M:");
+  Serial.print(mag, DEC);
+}
+
+void ffIMU::update(bool verbose) {
+  Adafruit_BNO055::getEvent(&event);
+  if (verbose) {
+    /* Display the floating point data */
+    Serial.print("IMU-");
+    Serial.print("\tX: ");
+    Serial.print(event.orientation.x, 4);
+    Serial.print("\tY: ");
+    Serial.print(event.orientation.y, 4);
+    Serial.print("\tZ: ");
+    Serial.print(event.orientation.z, 4);
+  }
 }
