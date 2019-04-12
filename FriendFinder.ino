@@ -43,6 +43,30 @@ void loop() {
   // if millis() or timer wraps around, we'll just reset it
   if (timer1 > millis()) timer1 = millis();
   // approximately every 2 seconds or so, print out the current stats
+  if (millis() - timer1 > 5000) {
+    timer1 = millis();  // reset the timer
+    Serial.println("*Beacon heartbeat*");
+
+    // messenger.update(true, GPS);
+    Serial.println("----InPacket:----");
+    messenger.printPacket(messenger.inPacket);
+    Serial.println("-----------------");
+    Serial.println("----OutPacket:----");
+    messenger.printPacket(messenger.outPacket);
+    Serial.println("-----------------");
+
+    Serial.println("----Distance in meters:----");
+    float dist = messenger.calcDistance(
+        messenger.outPacket.latitude_fixed, messenger.outPacket.longitude_fixed,
+        messenger.inPacket.latitude_fixed, messenger.inPacket.longitude_fixed);
+    Serial.println(dist, 3);
+    Serial.println("-----------------");
+    Serial.println("----Haversine Distance in meters:----");
+    dist2 = messenger.haversine(
+        messenger.outPacket.latitude_fixed, messenger.outPacket.longitude_fixed,
+        messenger.inPacket.latitude_fixed, messenger.inPacket.longitude_fixed);
+    Serial.println(dist2, 6);
+    Serial.println("-----------------");
 
     messenger.send(true, FRIEND_ADDRESS);
     // }
