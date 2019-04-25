@@ -50,6 +50,7 @@ void ffNeoRing::colorDot(int pixel, uint32_t color) {
       setPixelColor(i, Off);
     }
     show();
+    delay(2);
   }
 }
 
@@ -63,7 +64,8 @@ void ffNeoRing::flash() {
   }
   delay(1);
   ffNeoRing::clearStrip();
-  ffNeoRing::show();
+  //ffNeoRing::show();
+  show();
 }
 
 // overload the base class show to check if stripChanged
@@ -94,6 +96,15 @@ uint32_t ffNeoRing::colorWheel(byte WheelPos) {
     WheelPos -= 170;
     return Adafruit_NeoPixel::Color(WheelPos * 3, 255 - WheelPos * 3, 0);
   }
+}
+
+int ffNeoRing::orientRing(int heading) {
+  // Get degrees per pixel
+  int degPerPixel = 360 / numPixels();
+  // Calculate pixel for heading
+  int pixelOut = -((heading / degPerPixel) - TOPPIXEL);
+  pixelOut = (pixelOut + 24) % 24;
+  return (pixelOut);
 }
 
 // wrapper on Adafruit_GPS constructor
@@ -403,14 +414,17 @@ uint16_t ffMessenger::haversine(double lat1, double lon1, double lat2,
 
 // Compass Stuff
 // wrapper on Adafruit_Sensor constructor
-ffIMU::ffIMU() : Adafruit_BNO055(55) {}
+ffIMU::ffIMU() : Adafruit_BNO055(55) {
+  system = gyro = accel = mag = 0;
+}
 
 void ffIMU::startup(bool verbose) {
   if (verbose) Serial.println("IMU Startup...");
-  Adafruit_BNO055::setExtCrystalUse(true);
+
 
   /* Initialise the sensor */
   bool init = Adafruit_BNO055::begin();
+    Adafruit_BNO055::setExtCrystalUse(true);
   if (!init && verbose) Serial.println("IMU Init - FAIL");
   if (init && verbose) {
   Serial.println("IMU Init - OK");
@@ -510,6 +524,7 @@ void ffIMU::displayCalStatus() {
 
 void ffIMU::update(bool verbose) {
   Adafruit_BNO055::getEvent(&event);
+  Adafruit_BNO055::getCalibration(&system, &gyro, &accel, &mag);
   if (verbose) {
     /* Display the floating point data */
     Serial.print("IMU-");
@@ -518,6 +533,6 @@ void ffIMU::update(bool verbose) {
     Serial.print("\tY: ");
     Serial.print(event.orientation.y, 4);
     Serial.print("\tZ: ");
-    Serial.print(event.orientation.z, 4);
+    Serial.println(event.orientation.z, 4);
   }
 }

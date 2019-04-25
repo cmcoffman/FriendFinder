@@ -14,6 +14,9 @@
 // Strip is connected to Arduino Pin 5
 #define NEOPIXEL_RING_PIN 12
 
+// Neopixel Ring orientation relative to IMU
+#define TOPPIXEL 15
+
 
 // GPS Stuff-----
 #define GPSSerial Serial2
@@ -45,6 +48,8 @@
 // Strip is connected to Arduino Pin 5
 #define NEOPIXEL_RING_PIN 5
 
+// Neopixel Ring orientation relative to IMU
+#define TOPPIXEL 15
 
 // GPS Stuff-----
 #define GPSSerial Serial1
@@ -70,6 +75,9 @@
 #define NUMPIXELS 24
 // Strip is connected to Arduino Pin 5
 #define NEOPIXEL_RING_PIN 5
+
+// Neopixel Ring orientation relative to IMU
+#define TOPPIXEL 15
 
 
 // GPS Stuff-----

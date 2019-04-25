@@ -26,6 +26,7 @@ class ffNeoRing : public Adafruit_NeoPixel {
   void colorWipe(uint32_t c, uint16_t wait);
   void colorDot(int pixel, uint32_t color);
   void flash();
+  int orientRing(int heading);
 
   // helper functions dealing with Adafruit_NeoPixel::Color (32 bit color)
   static uint32_t randomColor(void) {
@@ -155,6 +156,8 @@ class ffIMU : public Adafruit_BNO055 {
   // Event
   sensors_event_t event;
 
+  // Calibration Status
+uint8_t system, gyro, accel, mag;
 };
 
 

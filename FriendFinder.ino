@@ -36,62 +36,70 @@ uint32_t timer2 = millis();
 float dist2;
 
 void loop() {
-  GPS.update(false);
-  messenger.check(false);
-  messenger.update(false, GPS);
+  //GPS.update(false);
+  //messenger.check(false);
+  //messenger.update(false, GPS);
+  ffIMU.update(false);
 
-  // if millis() or timer wraps around, we'll just reset it
-  if (timer1 > millis()) timer1 = millis();
-  // approximately every 2 seconds or so, print out the current stats
-  if (millis() - timer1 > 5000) {
-    timer1 = millis();  // reset the timer
-    Serial.println("*Beacon heartbeat*");
+  //  displayData();
 
-    // messenger.update(true, GPS);
-    Serial.println("----InPacket:----");
-    messenger.printPacket(messenger.inPacket);
-    Serial.println("-----------------");
-    Serial.println("----OutPacket:----");
-    messenger.printPacket(messenger.outPacket);
-    Serial.println("-----------------");
+  int heading = ffIMU.event.orientation.x;
+  int pixel = ring.orientRing(heading);
+  ring.colorDot(pixel, ffNeoRing::Blue);
+  //delay(100);
 
-    Serial.println("----Distance in meters:----");
-    float dist = messenger.calcDistance(
-        messenger.outPacket.latitude_fixed, messenger.outPacket.longitude_fixed,
-        messenger.inPacket.latitude_fixed, messenger.inPacket.longitude_fixed);
-    Serial.println(dist, 3);
-    Serial.println("-----------------");
-    Serial.println("----Haversine Distance in meters:----");
+  // // Periodic Action
+  // if (timer2 > millis()) timer2 = millis(); // fix rollover
+  // if (millis() - timer2 > 2000) {
+  //   timer2 = millis();  // reset the timer
+
+  // }
+}
+
+void displayData() {
     dist2 = messenger.haversine(
         messenger.outPacket.latitude_fixed, messenger.outPacket.longitude_fixed,
         messenger.inPacket.latitude_fixed, messenger.inPacket.longitude_fixed);
-    Serial.println(dist2, 6);
-    Serial.println("-----------------");
-
-    messenger.send(true, FRIEND_ADDRESS);
-    // }
-  }
-
-  if (timer2 > millis()) timer2 = millis();
-  // approximately every 2 seconds or so, print out the current stats
-  if (millis() - timer2 > 500) {
-    timer2 = millis();  // reset the timer
-    // text display tests
-    dist2 = messenger.haversine(
-        messenger.outPacket.latitude_fixed, messenger.outPacket.longitude_fixed,
-        messenger.inPacket.latitude_fixed, messenger.inPacket.longitude_fixed);
-    display.setTextSize(2);
+    display.setTextSize(1);
     display.setTextColor(WHITE);
     display.clearDisplay();
     display.setCursor(0, 0);
     display.print("D: ");
     display.print(dist2, 0);
-    display.println(" m");
+    display.print(" m ");
     display.print("T: ");
     unsigned long age = messenger.time_since_last_msg / 1000;
     display.print(age);
-    display.print(" s");
+    display.print(" s ");
+    display.println();
+    //display.println();
+    display.print("Sys:");
+    display.print(ffIMU.system, DEC);
+
+    display.print(" G:");
+    display.print(ffIMU.gyro, DEC);
+
+    display.print(" A:");
+    display.print(ffIMU.accel, DEC);
+
+    display.print(" M:");
+    display.print(ffIMU.mag, DEC);
+display.println();
+    display.println();
+
+
+    display.print("X: ");
+    display.print(ffIMU.event.orientation.x, 0);
+    display.print(" Y: ");
+    display.print(ffIMU.event.orientation.y, 0);
+    display.print(" Z: ");
+    display.print(ffIMU.event.orientation.z, 0);
+
+
+
+
+
+
     display.setCursor(0, 0);
     display.display();  // actually display all of the above
-  }
 }
