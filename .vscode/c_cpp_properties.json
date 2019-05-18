@@ -16,7 +16,6 @@
                 "C:\\Users\\Clayton\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel"
             ],
             "forcedInclude": [
-                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\samd\\1.2.9\\cores\\arduino\\Arduino.h",
                 "${workspaceRoot}",
                 "${workspaceRoot}\\src"
             ],

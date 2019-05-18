@@ -104,8 +104,8 @@ class ffGPS : public Adafruit_GPS {
 
 // Data Packet
 struct dataPacket {
-  uint32_t latitude_fixed;   // 4 bytes
-  uint32_t longitude_fixed;  // 4 bytes
+  int32_t latitude_fixed;   // 4 bytes
+  int32_t longitude_fixed;  // 4 bytes
   uint8_t fixquality;        // 1 byte
   uint8_t satellites;        // 1 byte
   uint16_t HDOP;             // 2 bytes
@@ -113,7 +113,9 @@ struct dataPacket {
 
 // Friends Loc and Distance
 struct friendDB {
-  uint32_t distance_meters;
+  float latitude;
+  float longitude;
+  float distance_meters;
   float heading_degrees;
   int age_seconds;
   int quality;

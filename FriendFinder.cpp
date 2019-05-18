@@ -336,12 +336,31 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
     if (verbose) Serial.println("Messenger: No GPS Fix");
   }
   if (myGPS.fixquality > B0) {
+
+  //   char lat;                 ///< N/S
+  // char lon;                 ///< E/W
+
+  if (myGPS.lat == 'N') {
     outPacket.latitude_fixed = myGPS.latitude_fixed;
-    outPacket.longitude_fixed = myGPS.longitude_fixed;
+  }
+  if (myGPS.lat == 'S') {
+    outPacket.latitude_fixed = myGPS.latitude_fixed;
+  }
+    if (myGPS.lon == 'W') {
+    outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
+  }
+  if (myGPS.lat == 'E') {
+    outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
+  }
+    //outPacket.longitude_fixed = myGPS.longitude_fixed;
     outPacket.fixquality = myGPS.fixquality;
     outPacket.satellites = myGPS.satellites;
     outPacket.HDOP = myGPS.HDOP;
 
+// Copy to message database
+friend_msgs[MY_ADDRESS].fixquality = outPacket.fixquality;
+friend_msgs[MY_ADDRESS].latitude_fixed = outPacket.latitude_fixed;
+friend_msgs[MY_ADDRESS].longitude_fixed = outPacket.longitude_fixed;
 // // debug unit test thing
 //       outPacket.latitude_fixed = 361375000;
 //   outPacket.longitude_fixed = 867851560;
@@ -356,6 +375,8 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
     if (friend_msgs[i].fixquality == 0) {
       continue;
     }
+    friend_locs[i].latitude = friend_msgs[i].latitude_fixed;
+    friend_locs[i].longitude = friend_msgs[i].longitude_fixed;
     friend_locs[i].distance_meters = haversine(
         outPacket.latitude_fixed,
         outPacket.longitude_fixed,

@@ -21,7 +21,7 @@ void setup() {
   Serial.begin(115200);
 
   pinMode(13, OUTPUT);
-  delay(5000);
+  //delay(5000);
 
   while (!Serial && millis() < 5000);
 
@@ -234,13 +234,13 @@ void printData(bool setup) {
   if (setup) {
     Serial.println("my.lat, my.long, their.lat, their.long, their.distance, their.bearing");
   } else {
-    Serial.print(messenger.outPacket.latitude_fixed);
+    Serial.print(messenger.friend_locs[MY_ADDRESS].latitude / 10000000, 9);
     Serial.print(",");
-    Serial.print(messenger.outPacket.longitude_fixed);
+    Serial.print(messenger.friend_locs[MY_ADDRESS].longitude / 10000000, 9);
     Serial.print(",");
-    Serial.print(messenger.friend_msgs[FRIEND_ADDRESS].latitude_fixed);
+    Serial.print(messenger.friend_locs[FRIEND_ADDRESS].latitude / 10000000, 9);
     Serial.print(",");
-    Serial.print(messenger.friend_msgs[FRIEND_ADDRESS].longitude_fixed);
+    Serial.print(messenger.friend_locs[FRIEND_ADDRESS].longitude / 10000000, 9);
     Serial.print(",");
     Serial.print(messenger.friend_locs[FRIEND_ADDRESS].distance_meters);
     Serial.print(",");
