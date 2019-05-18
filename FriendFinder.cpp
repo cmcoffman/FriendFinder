@@ -50,6 +50,7 @@ void ffNeoRing::colorDot(int pixel, uint32_t color) {
       setPixelColor(i, Off);
     }
     show();
+    delay(2);
   }
 }
 
@@ -63,7 +64,7 @@ void ffNeoRing::flash() {
   }
   delay(1);
   ffNeoRing::clearStrip();
-  ffNeoRing::show();
+  show();
 }
 
 // overload the base class show to check if stripChanged
@@ -94,6 +95,15 @@ uint32_t ffNeoRing::colorWheel(byte WheelPos) {
     WheelPos -= 170;
     return Adafruit_NeoPixel::Color(WheelPos * 3, 255 - WheelPos * 3, 0);
   }
+}
+
+int ffNeoRing::orientRing(int heading) {
+  // Get degrees per pixel
+  int degPerPixel = 360 / numPixels();
+  // Calculate pixel for heading
+  int pixelOut = -((heading / degPerPixel) - TOPPIXEL);
+  pixelOut = (pixelOut + 24) % 24;
+  return (pixelOut);
 }
 
 // wrapper on Adafruit_GPS constructor
@@ -169,6 +179,11 @@ void ffGPS::update(bool verbose) {
         Serial.println("********************************");
       }
     }
+  } else {
+     if (verbose) {
+       // Decided not to print a message if there's nothing.
+        //Serial.println("*No NMEA*");
+     }
   }
 }
 
@@ -229,6 +244,7 @@ void ffRadio::startup(bool verbose) {
   // Manual Reset
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
+  delay(100);
   digitalWrite(RFM95_RST, LOW);
   delay(10);
   digitalWrite(RFM95_RST, HIGH);
@@ -258,6 +274,7 @@ void ffMessenger::startup(bool verbose) {
     Serial.println("Messenger Init - FAIL");
   if (RHReliableDatagram::init() && verbose)
     Serial.println("Messenger Init - OK");
+
 }
 
 void ffMessenger::printPacket(dataPacket packet) {
@@ -288,7 +305,7 @@ void ffMessenger::check(bool verbose) {
     if (RHReliableDatagram::recvfromAck(inBuf, &len, &from)) {
       // copy message to inpacket
       memcpy(&inPacket, inBuf, sizeof(inPacket));
-      // memcpy(&friendDB[from], inBuf, sizeof(inPacket));
+      memcpy(&friend_msgs[from], inBuf, sizeof(inPacket));
       // reset time since last message
       time_of_last_msg = millis();
       if (verbose) {
@@ -311,9 +328,9 @@ void ffMessenger::check(bool verbose) {
 }
 
 // This should build the outPacket (with my status)
-// and eventually also process incoming messages variously
-// such as adding timestamps so we know how old the messages are.
+// and updates the friendDB with distances and headings
 void ffMessenger::update(bool verbose, ffGPS myGPS) {
+  // Update my location
   if (myGPS.fixquality == B0) {
     outPacket.fixquality = 0;
     if (verbose) Serial.println("Messenger: No GPS Fix");
@@ -324,7 +341,40 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
     outPacket.fixquality = myGPS.fixquality;
     outPacket.satellites = myGPS.satellites;
     outPacket.HDOP = myGPS.HDOP;
+
+// // debug unit test thing
+//       outPacket.latitude_fixed = 361375000;
+//   outPacket.longitude_fixed = 867851560;
+//   outPacket.fixquality = 1;
+
     if (verbose) Serial.println("Messenger: GPS Fix, updated outPacket");
+  }
+
+  // Update friendDB with distances and headings
+  for (int i = 0; i < 10; i++) {
+    // skip if bad fix
+    if (friend_msgs[i].fixquality == 0) {
+      continue;
+    }
+    friend_locs[i].distance_meters = haversine(
+        outPacket.latitude_fixed,
+        outPacket.longitude_fixed,
+        friend_msgs[i].latitude_fixed,
+        friend_msgs[i].longitude_fixed);
+    friend_locs[i].heading_degrees =
+        bearing(friend_msgs[i].latitude_fixed,
+                friend_msgs[i].longitude_fixed,
+                outPacket.latitude_fixed,
+                outPacket.longitude_fixed);
+    if (verbose) {
+      Serial.print("Friend ");
+      Serial.print(i);
+      Serial.print(" distance/bearing ");
+      Serial.print(friend_locs[i].distance_meters);
+      Serial.print(" / ");
+      Serial.print(friend_locs[i].heading_degrees);
+      Serial.println(" ");
+    }
   }
 }
 
@@ -345,7 +395,7 @@ void ffMessenger::send(bool verbose, uint8_t to) {
     Serial.println();
   }
   // Send a reply back to the originator client
-  Serial.println("sending message..");
+  if (verbose) Serial.println("sending message..");
   if (!RHReliableDatagram::sendtoWait((uint8_t*)&outPacket, sizeof(outPacket),
                                       to)) {
     if (verbose && to != 255)
@@ -374,7 +424,7 @@ float ffMessenger::calcDistance(uint32_t my_lat, uint32_t my_long,
   return distance;
 }
 
-uint16_t ffMessenger::haversine(double lat1, double lon1, double lat2,
+uint32_t ffMessenger::haversine(double lat1, double lon1, double lat2,
                                 double lon2) {
   // cribbed from
   // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
@@ -401,25 +451,84 @@ uint16_t ffMessenger::haversine(double lat1, double lon1, double lat2,
   return int_meters;
 }
 
+// Haversine Distance Calculator with Fixed width coords
+// from: http://forum.arduino.cc/index.php?topic=45760.msg332014#msg332014
+int ffMessenger::HaverSineFixed(uint32_t lat1, uint32_t lon1, uint32_t lat2,
+                                uint32_t lon2) {
+  float flat1 = lat1 / 10000000;
+  float flat2 = lat2 / 10000000;
+  float flon1 = lon1 / 10000000;
+  float flon2 = lon2 / 10000000;
+
+  float ToRad = PI / 180.0;
+  float R = 63710;  // radius earth in m
+
+  float dLat = (lat2 - lat1) * ToRad;
+  float dLon = (lon2 - lon1) * ToRad;
+
+  float a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1 * ToRad) *
+                                                cos(lat2 * ToRad) *
+                                                sin(dLon / 2) * sin(dLon / 2);
+
+  float c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+  float d = ((R * c) * 8) / 1000;  // convert to meters
+  int distance = d;
+  return distance;
+}
+
+int ffMessenger::bearing(uint32_t lat1, uint32_t lon1, uint32_t lat2,
+                         uint32_t lon2) {
+  // Gotten from:
+  // https://gis.stackexchange.com/questions/252672/calculate-bearing-between-two-decimal-gps-coordinates-arduino-c?newreg=eb676d9dca8f4cc8ad10c14a3b00d423
+
+  float teta1 = radians(lat1);
+  float teta2 = radians(lat2);
+  float delta1 = radians(lat2 - lat1);
+  float delta2 = radians(lon2 - lon1);
+
+  //==================Heading Formula Calculation================//
+
+  float y = sin(delta2) * cos(teta2);
+  float x = cos(teta1) * sin(teta2) - sin(teta1) * cos(teta2) * cos(delta2);
+  float brng = atan2(y, x);
+  brng = degrees(brng);  // radians to degrees
+  brng = (((int)brng + 360) % 360);
+
+  // Serial.print("Heading GPS: ");
+  // Serial.println(brng);
+
+  return brng;
+}
+
+int dumbDistance(uint32_t lat1, uint32_t lon1, uint32_t lat2, uint32_t lon2) {
+  uint32_t dLonSq = (lon2 - lon1) ^ 2;
+  uint32_t dLatSq = (lat2 - lat1) ^ 2;
+  uint32_t dSum = dLonSq + dLatSq;
+  long d = sqrt(dSum);
+  d = (d * 0.08);
+  return d;
+}
+
 // Compass Stuff
 // wrapper on Adafruit_Sensor constructor
-ffIMU::ffIMU() : Adafruit_BNO055(55) {}
+ffIMU::ffIMU() : Adafruit_BNO055(55) { system = gyro = accel = mag = 0; }
 
 void ffIMU::startup(bool verbose) {
   if (verbose) Serial.println("IMU Startup...");
-  Adafruit_BNO055::setExtCrystalUse(true);
 
   /* Initialise the sensor */
   bool init = Adafruit_BNO055::begin();
+  Adafruit_BNO055::setExtCrystalUse(true);
   if (!init && verbose) Serial.println("IMU Init - FAIL");
   if (init && verbose) {
-  Serial.println("IMU Init - OK");
+    Serial.println("IMU Init - OK");
 
-  /* Display some basic information on this sensor */
-  ffIMU::displaySensorDetails();
+    /* Display some basic information on this sensor */
+    ffIMU::displaySensorDetails();
 
-  /* Optional: Display current status */
-  ffIMU::displaySensorStatus();
+    /* Optional: Display current status */
+    ffIMU::displaySensorStatus();
   }
   if (verbose) Serial.println("-End IMU Init-");
 }
@@ -510,6 +619,7 @@ void ffIMU::displayCalStatus() {
 
 void ffIMU::update(bool verbose) {
   Adafruit_BNO055::getEvent(&event);
+  Adafruit_BNO055::getCalibration(&system, &gyro, &accel, &mag);
   if (verbose) {
     /* Display the floating point data */
     Serial.print("IMU-");
@@ -518,6 +628,6 @@ void ffIMU::update(bool verbose) {
     Serial.print("\tY: ");
     Serial.print(event.orientation.y, 4);
     Serial.print("\tZ: ");
-    Serial.print(event.orientation.z, 4);
+    Serial.println(event.orientation.z, 4);
   }
 }

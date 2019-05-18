@@ -7,3 +7,5 @@ FF_calcs.xlsx
 *.code-workspace
 .vscode/arduino.json
 .vscode/c_cpp_properties.json
+.Rproj.user
+/FF Data Anal
