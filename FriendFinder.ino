@@ -196,7 +196,7 @@ void displayData() {
 
   display.print("H:");
 
-  display.print(messenger.friend_locs[FRIEND_ADDRESS].heading_degrees);
+  display.print(messenger.friend_locs[FRIEND_ADDRESS].bearing);
 
 
   display.println();
@@ -234,17 +234,17 @@ void printData(bool setup) {
   if (setup) {
     Serial.println("my.lat, my.long, their.lat, their.long, their.distance, their.bearing");
   } else {
-    Serial.print(messenger.friend_locs[MY_ADDRESS].latitude / 10000000, 9);
+    Serial.print(messenger.friend_locs[MY_ADDRESS].latitude, 9);
     Serial.print(",");
-    Serial.print(messenger.friend_locs[MY_ADDRESS].longitude / 10000000, 9);
+    Serial.print(messenger.friend_locs[MY_ADDRESS].longitude, 9);
     Serial.print(",");
-    Serial.print(messenger.friend_locs[FRIEND_ADDRESS].latitude / 10000000, 9);
+    Serial.print(messenger.friend_locs[FRIEND_ADDRESS].latitude, 9);
     Serial.print(",");
-    Serial.print(messenger.friend_locs[FRIEND_ADDRESS].longitude / 10000000, 9);
+    Serial.print(messenger.friend_locs[FRIEND_ADDRESS].longitude, 9);
     Serial.print(",");
     Serial.print(messenger.friend_locs[FRIEND_ADDRESS].distance_meters);
     Serial.print(",");
-    Serial.println(messenger.friend_locs[FRIEND_ADDRESS].heading_degrees);
+    Serial.println(messenger.friend_locs[FRIEND_ADDRESS].bearing);
   }
 }
 void loop() {
@@ -280,7 +280,7 @@ void loop() {
 
  // colorDotWait(0, CRGB::Red);
   drawCompassWait(CRGB::Red);
-  colorDotWait(orientRing(ffIMU.event.orientation.x - messenger.friend_locs[FRIEND_ADDRESS].heading_degrees), CRGB::Green);
+  colorDotWait(orientRing(ffIMU.event.orientation.x - messenger.friend_locs[FRIEND_ADDRESS].bearing), CRGB::Green);
 
 
   //  makeWorm(worm1, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[FRIEND_ADDRESS].heading_degrees), 3, CRGB::Green);

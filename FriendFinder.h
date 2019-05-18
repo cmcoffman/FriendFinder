@@ -116,7 +116,7 @@ struct friendDB {
   float latitude;
   float longitude;
   float distance_meters;
-  float heading_degrees;
+  float bearing;
   int age_seconds;
   int quality;
   CRGB color;
@@ -144,13 +144,11 @@ class ffMessenger : public RHReliableDatagram {
   void check(bool verbose = true);
   void update(bool verbose, ffGPS myGPS);
   void send(bool verbose, uint8_t to);
-  float calcDistance(uint32_t my_lat, uint32_t my_long, uint32_t their_lat,
-                     uint32_t their_long);
-  uint32_t haversine(double lat1, double lon1, double lat2, double lon2);
-  int HaverSineFixed(uint32_t lat1, uint32_t lon1, uint32_t lat2,
-                     uint32_t lon2);
-  int bearing(uint32_t lat1, uint32_t lon1, uint32_t lat2,
-                           uint32_t lon2);
+
+  uint32_t haversine(float lat1, float lon1, float lat2, float lon2);
+
+  int bearing(float lat1, float lon1, float lat2,
+                           float lon2);
 
       // Ingoing and Outgoing Datapackets
   dataPacket inPacket;
