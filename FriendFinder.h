@@ -1,16 +1,41 @@
 #ifndef _FRIENDFINDER_
 #define _FRIENDFINDER_
 
+#include <Adafruit_BNO055.h>
 #include <Adafruit_GPS.h>
 #include <Adafruit_NeoPixel.h>
+#include <Adafruit_Sensor.h>
+#include <FastLED.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
 
 #include "FFConfig.h"
+
+// FastLED Ring Suff
+#ifdef ARDUINO_FEATHER_ESP32
+
+//#define CLK_PIN   4
+#define LED_TYPE WS2811
+#define COLOR_ORDER GRB
+#define NUM_LEDS 24
+
+#define BRIGHTNESS 96
+#define FRAMES_PER_SECOND 120
+#endif
+
+#ifdef ARDUINO_SAMD_FEATHER_M0_EXPRESS
+// FastLED
+#define DATA_PIN 5
+//#define CLK_PIN   4
+#define LED_TYPE WS2811
+#define COLOR_ORDER GRB
+#define NUM_LEDS 24
+
+#define BRIGHTNESS 96
+#define FRAMES_PER_SECOND 120
+#endif
 
 class ffNeoRing : public Adafruit_NeoPixel {
  private:
@@ -88,10 +113,11 @@ struct dataPacket {
 
 // Friends Loc and Distance
 struct friendDB {
-  int distance_meters;
-  int heading_degrees;
+  uint32_t distance_meters;
+  float heading_degrees;
   int age_seconds;
   int quality;
+  CRGB color;
 };
 
 class ffRadio : public RH_RF95 {
@@ -118,8 +144,13 @@ class ffMessenger : public RHReliableDatagram {
   void send(bool verbose, uint8_t to);
   float calcDistance(uint32_t my_lat, uint32_t my_long, uint32_t their_lat,
                      uint32_t their_long);
-  uint16_t haversine(double lat1, double lon1, double lat2, double lon2);
-  // Ingoing and Outgoing Datapackets
+  uint32_t haversine(double lat1, double lon1, double lat2, double lon2);
+  int HaverSineFixed(uint32_t lat1, uint32_t lon1, uint32_t lat2,
+                     uint32_t lon2);
+  int bearing(uint32_t lat1, uint32_t lon1, uint32_t lat2,
+                           uint32_t lon2);
+
+      // Ingoing and Outgoing Datapackets
   dataPacket inPacket;
   dataPacket outPacket;
 
@@ -157,8 +188,7 @@ class ffIMU : public Adafruit_BNO055 {
   sensors_event_t event;
 
   // Calibration Status
-uint8_t system, gyro, accel, mag;
+  uint8_t system, gyro, accel, mag;
 };
-
 
 #endif  // Close Library
