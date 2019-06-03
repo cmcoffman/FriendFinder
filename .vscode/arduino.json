@@ -1,7 +1,8 @@
 {
     "sketch": "FriendFinder.ino",
-    "board": "adafruit:samd:adafruit_feather_m0_express",
+    "board": "esp32:esp32:featheresp32",
     "programmer": "AVRISP mkII",
-    "port": "COM17",
-    "output": "C:\\Users\\Clayton\\Documents\\Arduino\\build"
+    "port": "COM7",
+    "output": "C:\\Users\\Clayton\\Documents\\Arduino\\build",
+    "configuration": "FlashFreq=80,UploadSpeed=921600,DebugLevel=none"
 }
