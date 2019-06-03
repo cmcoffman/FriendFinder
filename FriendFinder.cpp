@@ -336,12 +336,31 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
     if (verbose) Serial.println("Messenger: No GPS Fix");
   }
   if (myGPS.fixquality > B0) {
+
+  //   char lat;                 ///< N/S
+  // char lon;                 ///< E/W
+
+  if (myGPS.lat == 'N') {
     outPacket.latitude_fixed = myGPS.latitude_fixed;
-    outPacket.longitude_fixed = myGPS.longitude_fixed;
+  }
+  if (myGPS.lat == 'S') {
+    outPacket.latitude_fixed = myGPS.latitude_fixed;
+  }
+    if (myGPS.lon == 'W') {
+    outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
+  }
+  if (myGPS.lat == 'E') {
+    outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
+  }
+    //outPacket.longitude_fixed = myGPS.longitude_fixed;
     outPacket.fixquality = myGPS.fixquality;
     outPacket.satellites = myGPS.satellites;
     outPacket.HDOP = myGPS.HDOP;
 
+// Copy to message database
+friend_msgs[MY_ADDRESS].fixquality = outPacket.fixquality;
+friend_msgs[MY_ADDRESS].latitude_fixed = outPacket.latitude_fixed;
+friend_msgs[MY_ADDRESS].longitude_fixed = outPacket.longitude_fixed;
 // // debug unit test thing
 //       outPacket.latitude_fixed = 361375000;
 //   outPacket.longitude_fixed = 867851560;
@@ -351,28 +370,50 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
   }
 
   // Update friendDB with distances and headings
+float divisor = 10000000.0;
+  // First Update My own data
+   if (friend_msgs[MY_ADDRESS].fixquality != 0) {
+    friend_locs[MY_ADDRESS].latitude = friend_msgs[MY_ADDRESS].latitude_fixed / divisor;
+    friend_locs[MY_ADDRESS].longitude = friend_msgs[MY_ADDRESS].longitude_fixed / divisor;
+    friend_locs[MY_ADDRESS].distance_meters = haversine(
+        friend_locs[MY_ADDRESS].latitude,
+        friend_locs[MY_ADDRESS].longitude,
+        friend_locs[MY_ADDRESS].latitude,
+        friend_locs[MY_ADDRESS].longitude);
+    friend_locs[MY_ADDRESS].bearing =
+        bearing(friend_locs[MY_ADDRESS].latitude,
+                friend_locs[MY_ADDRESS].longitude,
+                friend_locs[MY_ADDRESS].latitude,
+                friend_locs[MY_ADDRESS].longitude);
+    }
+
+// update the whole thing now
   for (int i = 0; i < 10; i++) {
     // skip if bad fix
-    if (friend_msgs[i].fixquality == 0) {
+   if (friend_msgs[i].fixquality == 0) {
       continue;
     }
+
+    friend_locs[i].latitude = friend_msgs[i].latitude_fixed / divisor;
+    friend_locs[i].longitude = friend_msgs[i].longitude_fixed / divisor;
+
     friend_locs[i].distance_meters = haversine(
-        outPacket.latitude_fixed,
-        outPacket.longitude_fixed,
-        friend_msgs[i].latitude_fixed,
-        friend_msgs[i].longitude_fixed);
-    friend_locs[i].heading_degrees =
-        bearing(friend_msgs[i].latitude_fixed,
-                friend_msgs[i].longitude_fixed,
-                outPacket.latitude_fixed,
-                outPacket.longitude_fixed);
+        friend_locs[MY_ADDRESS].latitude,
+        friend_locs[MY_ADDRESS].longitude,
+        friend_locs[i].latitude,
+        friend_locs[i].longitude);
+    friend_locs[i].bearing =
+        bearing(friend_locs[MY_ADDRESS].latitude,
+                friend_locs[MY_ADDRESS].longitude,
+                friend_locs[i].latitude,
+                friend_locs[i].longitude);
     if (verbose) {
       Serial.print("Friend ");
       Serial.print(i);
       Serial.print(" distance/bearing ");
       Serial.print(friend_locs[i].distance_meters);
       Serial.print(" / ");
-      Serial.print(friend_locs[i].heading_degrees);
+      Serial.print(friend_locs[i].bearing);
       Serial.println(" ");
     }
   }
@@ -410,29 +451,29 @@ void ffMessenger::send(bool verbose, uint8_t to) {
   }
 }
 
-float ffMessenger::calcDistance(uint32_t my_lat, uint32_t my_long,
-                                uint32_t their_lat, uint32_t their_long) {
-  // float TinyGPS::distance_between (float lat1, float long1, float lat2, float
-  // long2)
-  // returns value in meters
-  my_lat /= 10000000;
-  my_long /= 10000000;
-  their_lat /= 10000000;
-  their_long /= 10000000;
-  float distance =
-      TinyGPS::distance_between(my_lat, my_long, their_lat, their_long);
-  return distance;
-}
+// float ffMessenger::calcDistance(uint32_t my_lat, uint32_t my_long,
+//                                 uint32_t their_lat, uint32_t their_long) {
+//   // float TinyGPS::distance_between (float lat1, float long1, float lat2, float
+//   // long2)
+//   // returns value in meters
+//   my_lat /= 10000000;
+//   my_long /= 10000000;
+//   their_lat /= 10000000;
+//   their_long /= 10000000;
+//   float distance =
+//       TinyGPS::distance_between(my_lat, my_long, their_lat, their_long);
+//   return distance;
+// }
 
-uint32_t ffMessenger::haversine(double lat1, double lon1, double lat2,
-                                double lon2) {
+uint32_t ffMessenger::haversine(float lat1, float lon1, float lat2,
+                                float lon2) {
   // cribbed from
   // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
   // convert back to floating point
-  lat1 /= 10000000;
-  lon1 /= 10000000;
-  lat2 /= 10000000;
-  lon2 /= 10000000;
+  // lat1 /= 10000000;
+  // lon1 /= 10000000;
+  // lat2 /= 10000000;
+  // lon2 /= 10000000;
   // distance between latitudes
   // and longitudes
   double dLat = (lat2 - lat1) * M_PI / 180.0;
@@ -447,38 +488,38 @@ uint32_t ffMessenger::haversine(double lat1, double lon1, double lat2,
       pow(sin(dLat / 2), 2) + pow(sin(dLon / 2), 2) * cos(lat1) * cos(lat2);
   double rad = 6371;
   double c = 2 * asin(sqrt(a));
-  uint16_t int_meters = round(rad * c * 1000);
+  uint32_t int_meters = round(rad * c * 1000);
   return int_meters;
 }
 
-// Haversine Distance Calculator with Fixed width coords
-// from: http://forum.arduino.cc/index.php?topic=45760.msg332014#msg332014
-int ffMessenger::HaverSineFixed(uint32_t lat1, uint32_t lon1, uint32_t lat2,
-                                uint32_t lon2) {
-  float flat1 = lat1 / 10000000;
-  float flat2 = lat2 / 10000000;
-  float flon1 = lon1 / 10000000;
-  float flon2 = lon2 / 10000000;
+// // Haversine Distance Calculator with Fixed width coords
+// // from: http://forum.arduino.cc/index.php?topic=45760.msg332014#msg332014
+// int ffMessenger::HaverSineFixed(uint32_t lat1, uint32_t lon1, uint32_t lat2,
+//                                 uint32_t lon2) {
+//   float flat1 = lat1 / 10000000;
+//   float flat2 = lat2 / 10000000;
+//   float flon1 = lon1 / 10000000;
+//   float flon2 = lon2 / 10000000;
 
-  float ToRad = PI / 180.0;
-  float R = 63710;  // radius earth in m
+//   float ToRad = PI / 180.0;
+//   float R = 63710;  // radius earth in m
 
-  float dLat = (lat2 - lat1) * ToRad;
-  float dLon = (lon2 - lon1) * ToRad;
+//   float dLat = (lat2 - lat1) * ToRad;
+//   float dLon = (lon2 - lon1) * ToRad;
 
-  float a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1 * ToRad) *
-                                                cos(lat2 * ToRad) *
-                                                sin(dLon / 2) * sin(dLon / 2);
+//   float a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1 * ToRad) *
+//                                                 cos(lat2 * ToRad) *
+//                                                 sin(dLon / 2) * sin(dLon / 2);
 
-  float c = 2 * atan2(sqrt(a), sqrt(1 - a));
+//   float c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
-  float d = ((R * c) * 8) / 1000;  // convert to meters
-  int distance = d;
-  return distance;
-}
+//   float d = ((R * c) * 8) / 1000;  // convert to meters
+//   int distance = d;
+//   return distance;
+// }
 
-int ffMessenger::bearing(uint32_t lat1, uint32_t lon1, uint32_t lat2,
-                         uint32_t lon2) {
+int ffMessenger::bearing(float lat1, float lon1, float lat2,
+                         float lon2) {
   // Gotten from:
   // https://gis.stackexchange.com/questions/252672/calculate-bearing-between-two-decimal-gps-coordinates-arduino-c?newreg=eb676d9dca8f4cc8ad10c14a3b00d423
 
