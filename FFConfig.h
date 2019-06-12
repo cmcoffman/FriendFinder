@@ -4,10 +4,17 @@
 /* Set the delay between fresh samples */
 #define BNO055_SAMPLERATE_DELAY_MS (100)
 
-#define ESP32_ADDRESS 2
-#define PROTBOARD_ADDRESS 1
-#define BEACON_ADDRESS 3
+// #define ESP32_ADDRESS 2
+// #define PROTBOARD_ADDRESS 1
+// #define BEACON_ADDRESS 3
 #define RF95_FREQ 915.0
+
+#define MAC_RED "80:7D:3A:F0:E2:E3"
+#define MAC_YELLOW "80:7D:3A:F0:E2:E2"
+
+#define MAC_GREEN "80:7D:3A:BC:D3:A4"
+#define MAC_BLUE "80:7D:3A:F0:E2:E4" // done
+
 
 
 
@@ -47,8 +54,8 @@
 // #define RFM95_INT 7
 
 
-#define MY_ADDRESS ESP32_ADDRESS
-#define FRIEND_ADDRESS BEACON_ADDRESS
+// #define MY_ADDRESS ESP32_ADDRESS
+// #define FRIEND_ADDRESS BEACON_ADDRESS
 //#define BEACON_ADDRESS 2
 
 // Change to 434.0 or other frequency, must match RX's freq!
@@ -76,8 +83,8 @@
 #define RFM95_RST 11
 #define RFM95_INT 10
 
-#define MY_ADDRESS PROTBOARD_ADDRESS
-#define FRIEND_ADDRESS ESP32_ADDRESS
+// #define MY_ADDRESS PROTBOARD_ADDRESS
+// #define FRIEND_ADDRESS ESP32_ADDRESS
 
 // Change to 434.0 or other frequency, must match RX's freq!
 
@@ -108,8 +115,8 @@
 #define RFM95_INT 7
 
 
-#define MY_ADDRESS BEACON_ADDRESS
-#define FRIEND_ADDRESS 1
+// #define MY_ADDRESS BEACON_ADDRESS
+// #define FRIEND_ADDRESS 1
 
 // Change to 434.0 or other frequency, must match RX's freq!
 

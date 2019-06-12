@@ -358,9 +358,9 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
     outPacket.HDOP = myGPS.HDOP;
 
 // Copy to message database
-friend_msgs[MY_ADDRESS].fixquality = outPacket.fixquality;
-friend_msgs[MY_ADDRESS].latitude_fixed = outPacket.latitude_fixed;
-friend_msgs[MY_ADDRESS].longitude_fixed = outPacket.longitude_fixed;
+friend_msgs[myAddy].fixquality = outPacket.fixquality;
+friend_msgs[myAddy].latitude_fixed = outPacket.latitude_fixed;
+friend_msgs[myAddy].longitude_fixed = outPacket.longitude_fixed;
 // // debug unit test thing
 //       outPacket.latitude_fixed = 361375000;
 //   outPacket.longitude_fixed = 867851560;
@@ -372,19 +372,19 @@ friend_msgs[MY_ADDRESS].longitude_fixed = outPacket.longitude_fixed;
   // Update friendDB with distances and headings
 float divisor = 10000000.0;
   // First Update My own data
-   if (friend_msgs[MY_ADDRESS].fixquality != 0) {
-    friend_locs[MY_ADDRESS].latitude = friend_msgs[MY_ADDRESS].latitude_fixed / divisor;
-    friend_locs[MY_ADDRESS].longitude = friend_msgs[MY_ADDRESS].longitude_fixed / divisor;
-    friend_locs[MY_ADDRESS].distance_meters = haversine(
-        friend_locs[MY_ADDRESS].latitude,
-        friend_locs[MY_ADDRESS].longitude,
-        friend_locs[MY_ADDRESS].latitude,
-        friend_locs[MY_ADDRESS].longitude);
-    friend_locs[MY_ADDRESS].bearing =
-        bearing(friend_locs[MY_ADDRESS].latitude,
-                friend_locs[MY_ADDRESS].longitude,
-                friend_locs[MY_ADDRESS].latitude,
-                friend_locs[MY_ADDRESS].longitude);
+   if (friend_msgs[myAddy].fixquality != 0) {
+    friend_locs[myAddy].latitude = friend_msgs[myAddy].latitude_fixed / divisor;
+    friend_locs[myAddy].longitude = friend_msgs[myAddy].longitude_fixed / divisor;
+    friend_locs[myAddy].distance_meters = haversine(
+        friend_locs[myAddy].latitude,
+        friend_locs[myAddy].longitude,
+        friend_locs[myAddy].latitude,
+        friend_locs[myAddy].longitude);
+    friend_locs[myAddy].bearing =
+        bearing(friend_locs[myAddy].latitude,
+                friend_locs[myAddy].longitude,
+                friend_locs[myAddy].latitude,
+                friend_locs[myAddy].longitude);
     }
 
 // update the whole thing now
@@ -398,13 +398,13 @@ float divisor = 10000000.0;
     friend_locs[i].longitude = friend_msgs[i].longitude_fixed / divisor;
 
     friend_locs[i].distance_meters = haversine(
-        friend_locs[MY_ADDRESS].latitude,
-        friend_locs[MY_ADDRESS].longitude,
+        friend_locs[myAddy].latitude,
+        friend_locs[myAddy].longitude,
         friend_locs[i].latitude,
         friend_locs[i].longitude);
     friend_locs[i].bearing =
-        bearing(friend_locs[MY_ADDRESS].latitude,
-                friend_locs[MY_ADDRESS].longitude,
+        bearing(friend_locs[myAddy].latitude,
+                friend_locs[myAddy].longitude,
                 friend_locs[i].latitude,
                 friend_locs[i].longitude);
     if (verbose) {

@@ -10,6 +10,7 @@
 #include <RH_RF95.h>
 #include <Wire.h>
 #include <utility/imumaths.h>
+#include "esp_system.h"
 
 #include "FFConfig.h"
 
@@ -150,7 +151,7 @@ class ffMessenger : public RHReliableDatagram {
   int bearing(float lat1, float lon1, float lat2,
                            float lon2);
 
-      // Ingoing and Outgoing Datapackets
+  // Ingoing and Outgoing Datapackets
   dataPacket inPacket;
   dataPacket outPacket;
 
@@ -169,6 +170,9 @@ class ffMessenger : public RHReliableDatagram {
   uint8_t inBuf[RH_RF95_MAX_MESSAGE_LEN];
   uint8_t outBuf[RH_RF95_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(inBuf);
+
+  // My address
+  uint8_t myAddy;
 };
 
 class ffIMU : public Adafruit_BNO055 {
