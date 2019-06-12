@@ -1,3 +1,6 @@
+// Are you using the PCB?
+//#define FF_PCB
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <SPI.h>
@@ -20,7 +23,17 @@ CRGB leds[NUM_LEDS];
 void setup() {
   Serial.begin(115200);
 
+  // Red LED
   pinMode(13, OUTPUT);
+
+  // Radio Enable Pin
+  pinMode(4, OUTPUT);
+
+  // Button Pin
+  //pinMode(15, INPUT);
+  pinMode(15, INPUT_PULLUP);
+
+  digitalWrite(4, HIGH);
   //delay(5000);
 
   while (!Serial && millis() < 5000);
@@ -52,18 +65,20 @@ void setup() {
   // MESSENGER MUST START FIRST!!!
 
       messenger.startup();
-      messenger.setTimeout(400);
-      messenger.setRetries(0);
+      //messenger.setTimeout(400);
+      //messenger.setRetries(0);
             radio.setFrequency(RF95_FREQ);
     radio.setTxPower(23, false);
 
    // radio.startup();
-   radio.printRegisters();
+   //radio.printRegisters();
 
 
   flash();
+
    // radio.printRegisters();
-   printData(true);
+   //printData(true);
+   Serial.println("-- Startup Complete --");
 }
 
 // Conveinient timer construct (at end of loop)
@@ -139,6 +154,23 @@ void flash() {
     // delayMicroseconds(50);
     FastLED.show();
   }
+  // delay(1);
+  // ffNeoRing::clearStrip();
+  // ffNeoRing::show();
+  // show();
+}
+
+void blink() {
+
+    for (uint16_t i = 0; i < NUM_LEDS; i++) {
+      leds[i] = CRGB(255, 0, 255);
+    }
+    FastLED.show();
+
+    for (uint16_t i = 0; i < NUM_LEDS; i++) {
+      leds[i] = CRGB(0, 0, 0);
+    }
+    FastLED.show();
   // delay(1);
   // ffNeoRing::clearStrip();
   // ffNeoRing::show();
@@ -251,6 +283,16 @@ void loop() {
   GPS.update(false);
   messenger.check(false);
 
+if (digitalRead(15) == LOW) {
+  Serial.println("Button LOW");
+  blink();
+}
+
+// if (digitalRead(15) == HIGH) {
+//   Serial.println("Button HIGH");
+// //  flash();
+// }
+
   // Exact Coords of Apmt
   // 361373800,867853733
   // 361373130,867853250
@@ -322,7 +364,7 @@ void loop() {
     // GPS.update(true);
     // messenger.check(true);
 
-    messenger.send(false, FRIEND_ADDRESS);
+    messenger.send(true, FRIEND_ADDRESS);
 
      digitalWrite(13, LOW);
   }

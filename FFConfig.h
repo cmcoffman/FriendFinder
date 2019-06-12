@@ -4,8 +4,8 @@
 /* Set the delay between fresh samples */
 #define BNO055_SAMPLERATE_DELAY_MS (100)
 
-#define ESP32_ADDRESS 1
-#define PROTBOARD_ADDRESS 2
+#define ESP32_ADDRESS 2
+#define PROTBOARD_ADDRESS 1
 #define BEACON_ADDRESS 3
 #define RF95_FREQ 915.0
 
@@ -15,7 +15,11 @@
 // Neopixel Ring Stuff-----
 #define NUMPIXELS 24
 // Strip is connected to Arduino Pin 5
-#define NEOPIXEL_RING_PIN 20
+//Breadboard Prototype
+//#define NEOPIXEL_RING_PIN 20
+
+// FF_PCB
+#define NEOPIXEL_RING_PIN A0
 
 // Neopixel Ring orientation relative to IMU
 // Is the IMU upside down relative to the ring?
@@ -25,7 +29,7 @@
 #define TOPPIXEL 22
 
 // FastLED
-#define DATA_PIN 12
+#define DATA_PIN A0
 
 // GPS Stuff-----
 #define GPSSerial Serial2
@@ -44,7 +48,7 @@
 
 
 #define MY_ADDRESS ESP32_ADDRESS
-#define FRIEND_ADDRESS PROTBOARD_ADDRESS
+#define FRIEND_ADDRESS BEACON_ADDRESS
 //#define BEACON_ADDRESS 2
 
 // Change to 434.0 or other frequency, must match RX's freq!
