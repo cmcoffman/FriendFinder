@@ -1,0 +1,19 @@
+loop()
+{
+    if(button is low)
+    {
+    	// typical debounce time
+    	delay_ms(20);
+
+    	// Lets check again if still low
+    	if(button is low)
+    	{
+    		Lets do something about it.
+
+		// Stay here if the thing we need to do is would be done before the user can let go of the button.
+		// So we dont re-trigger thinking its another press.
+	    	while(button is low);
+    	}
+    }
+
+}
