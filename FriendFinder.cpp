@@ -4,7 +4,7 @@
 
 #include "FriendFinder.h"
 #include <Adafruit_NeoPixel.h>
-#include <TinyGPS.h>
+//#include <TinyGPS.h>
 #include <math.h>
 
 const uint32_t ffNeoRing::Red = Adafruit_NeoPixel::Color(255, 0, 0);
@@ -266,7 +266,9 @@ void ffRadio::startup(bool verbose) {
 // Messaging Stuff
 // wrapper on RHReliableDatagram constructor
 ffMessenger::ffMessenger(RHGenericDriver& driver, uint8_t thisAddress)
-    : RHReliableDatagram(driver, thisAddress) {}
+    : RHReliableDatagram(driver, thisAddress) {
+      lastFrom = 4;
+    }
 
 void ffMessenger::startup(bool verbose) {
   if (verbose) Serial.println("Messenger Startup...");
@@ -308,21 +310,32 @@ void ffMessenger::check(bool verbose) {
       memcpy(&friend_msgs[from], inBuf, sizeof(inPacket));
       // reset time since last message
       time_of_last_msg = millis();
+      lastFrom = from;
       if (verbose) {
-        Serial.print("got request from : 0x");
-        Serial.print(from, HEX);
+        Serial.print("got request from : ");
+        Serial.print(from, DEC);
         Serial.print(": ");
+        
         for (int i = 0; i < (RH_RF95_MAX_MESSAGE_LEN - 1); i++) {
           Serial.print(inBuf[i], HEX);
           // Serial.print(" ");
+          //colorWipe(getColor(from));
         }
+        Serial.print("LAtest = ");
+        Serial.println(lastFrom);
         Serial.println();
       }
 
       // // Send a reply back to the originator client
       // if (!manager.sendtoWait(data, sizeof(data), from))
       //   Serial.println("sendtoWait failed");
+      time_since_last_msg = millis() - time_of_last_msg;
+      lastFrom = from;
+      
     }
+  } else {
+    lastFrom = 4;
+    
   }
   time_since_last_msg = millis() - time_of_last_msg;
 }

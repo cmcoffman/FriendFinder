@@ -2,7 +2,7 @@
     "sketch": "FriendFinder.ino",
     "board": "esp32:esp32:featheresp32",
     "programmer": "AVRISP mkII",
-    "port": "COM16",
+    "port": "COM6",
     "output": "C:\\Users\\Clayton\\Documents\\Arduino\\build",
     "configuration": "FlashFreq=80,UploadSpeed=921600,DebugLevel=none"
 }

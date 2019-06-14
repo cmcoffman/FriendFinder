@@ -40,7 +40,7 @@ void setup() {
   pinMode(15, INPUT_PULLUP);
 
   digitalWrite(4, HIGH);
-  delay(5000);
+  //delay(5000);
 
   while (!Serial && millis() < 5000);
 
@@ -104,8 +104,9 @@ colorWipe(getColor(2));
 colorWipe(getColor(3));
 colorWipe(getColor(4));
 delay(1000);
-colorWipe(getColor(myAddy));
+//colorWipe(getColor(myAddy));
 Serial.println("-- Startup Complete --");
+//flashColor(CRGB::Orange);
 }
 
 // Conveinient timer construct (at end of loop)
@@ -115,9 +116,11 @@ uint32_t timer3 = millis();
 uint32_t timer4 = millis();
 float dist2;
 
-CRGB worm1[NUM_LEDS];
-CRGB worm2[NUM_LEDS];
-CRGB worm3[NUM_LEDS];
+CRGB redWorm[NUM_LEDS];
+CRGB yellowWorm[NUM_LEDS];
+CRGB greenWorm[NUM_LEDS];
+CRGB blueWorm[NUM_LEDS];
+
 int toppix = 0;
 int dotpix;
 
@@ -162,6 +165,7 @@ void colorWipe(CRGB color) {
     FastLED.show();
     delay(10);
   }
+  clearRing();
 }
 
 void colorDotWait(int pixel, CRGB color) {
@@ -196,6 +200,32 @@ void flash() {
   // ffNeoRing::show();
   // show();
 }
+
+void flashColor(CRGB color) {
+  clearRing();
+  for (int j = 255; j > 0; j--) {
+    for (uint16_t i = 0; i < NUM_LEDS; i++) {
+      leds[i] = color;
+    }
+    FastLED.show();
+    for (int i = 0; i < 10; i++) {
+      leds[i].fadeLightBy( 256/10 );
+      FastLED.show();
+      delay(10);
+    }
+    for (int i = 0; i < 10; i++) {
+      leds[i].fadeToBlackBy( 256/10 );
+      FastLED.show();
+      delay(10);
+    }
+    clearRing();
+  }
+  // delay(1);
+  // ffNeoRing::clearStrip();
+  // ffNeoRing::show();
+  // show();
+}
+
 
 void blink() {
 
@@ -243,61 +273,7 @@ void makeWorm(CRGB *worm, int center, int radius, CRGB color) {
   }
 }
 
-// void displayData() {
-//   // dist2 = messenger.haversine(
-//   //     messenger.outPacket.latitude_fixed, messenger.outPacket.longitude_fixed,
-//   //     messenger.inPacket.latitude_fixed, messenger.inPacket.longitude_fixed);
-//   dist2 = messenger.friend_locs[FRIEND_ADDRESS].distance_meters;
-//   display.setTextSize(1);
-//   display.setTextColor(WHITE);
-//   display.clearDisplay();
-//   display.setCursor(0, 0);
 
-//   display.print("D:");
-//   if (dist2 > 8000) display.print("???");
-//   else display.print(dist2, 0);
-//   display.print("m ");
-
-//   display.print("T:");
-//   unsigned long age = messenger.time_since_last_msg / 1000;
-//   display.print(age);
-//   display.print("s ");
-
-//   display.print("H:");
-
-//   display.print(messenger.friend_locs[FRIEND_ADDRESS].bearing);
-
-
-//   display.println();
-//   display.print("Sys:");
-//   display.print(ffIMU.system, DEC);
-
-//   display.print(" G:");
-//   display.print(ffIMU.gyro, DEC);
-
-//   display.print(" A:");
-//   display.print(ffIMU.accel, DEC);
-
-//   display.print(" M:");
-//   display.print(ffIMU.mag, DEC);
-
-
-//   display.println();
-//   display.print("TOP:");
-//   display.print(toppix);
-//   display.print(" DOT:");
-//   display.print(dotpix);
-
-//   display.println();
-//   display.print("X: ");
-//   display.print(ffIMU.event.orientation.x, 0);
-//   display.print(" Y: ");
-//   display.print(ffIMU.event.orientation.y, 0);
-//   display.print(" Z: ");
-//   display.print(ffIMU.event.orientation.z, 0);
-//   display.setCursor(0, 0);
-//   display.display();  // actually display all of the above
-// }
 
 // void printData(bool setup) {
 //   if (setup) {
@@ -378,79 +354,39 @@ CRGB getColor(int addy) {
     }
 }
 
+
 void loop() {
   GPS.update(false);
-  messenger.check(true);
-
+  messenger.check();
+   
 if (digitalRead(15) == LOW) {
   Serial.println("Button LOW");
   blink();
-}
-
-// if (digitalRead(15) == HIGH) {
-//   Serial.println("Button HIGH");
-// //  flash();
-// }
-
-  // Exact Coords of Apmt
-  // 361373800,867853733
-  // 361373130,867853250
-  // 36.137313, -86.785325
-
-  // back porch Coords
-  // 361372990 867852690
-
-  // mailbox coords
-  // 361375000 867851560
-
-
-// // Fake data for testing
-//   messenger.friend_msgs[FRIEND_ADDRESS].latitude_fixed = 361372990;
-//   messenger.friend_msgs[FRIEND_ADDRESS].longitude_fixed = 867852690;
-//   messenger.friend_msgs[FRIEND_ADDRESS].fixquality = 1;
-//   messenger.outPacket.latitude_fixed = 361375000;
-//   messenger.outPacket.longitude_fixed = 867851560;
-
+  }
 
   messenger.update(false, GPS);
   ffIMU.update(false);
-
-
-
   clearRingWait();
 
- // colorDotWait(0, CRGB::Red);
   // drawCompassWait(CRGB::Red);
   // colorDotWait(orientRing(ffIMU.event.orientation.x - messenger.friend_locs[FRIEND_ADDRESS].bearing), CRGB::Green);
 
 
-  //  makeWorm(worm1, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[FRIEND_ADDRESS].heading_degrees), 3, CRGB::Green);
+  makeWorm(redWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[0].bearing), 3, CRGB::Red);
+  makeWorm(yellowWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[1].bearing), 3, CRGB::Yellow);
+  makeWorm(greenWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[2].bearing), 3, CRGB::Green);
+  makeWorm(blueWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[3].bearing), 3, CRGB::Blue);
 
-  // displayData();
+  
+  for (int i = 0; i < NUM_LEDS; i++) {
 
-  // for (int i = 0; i < NUM_LEDS; i++) {
-
-  //    leds[i] = worm2[i] + worm1[i] + worm3[i] + leds[i];
-  //   //leds[i] = worm1[i];
-  // }
+     //leds[i] = worm2[i] + worm1[i] + worm3[i] + leds[i];
+     leds[i] = redWorm[i] + yellowWorm[i] + greenWorm[i] + blueWorm[i];
+    //leds[i] = worm1[i];
+  }
   FastLED.show();
 
 
- // int heading = ffIMU.event.orientation.x;
-  // int pixel = orientRing(heading);
-  // colorDot(pixel, CRGB(0, 0, 255));
-  // colorDot(TOPPIXEL, CRGB(255, 0, 0));
-  // ring.colorDot(pixel, ffNeoRing::Blue);
-  // delay(100);
-
-  // makeWorm(worm2, orientRing(ffIMU.event.orientation.x) + 6 , 3, CRGB::Red);
-  // makeWorm(worm3, orientRing(ffIMU.event.orientation.x) - 6, 3,
-  // CRGB::Purple);
- // for (int i = 0; i < NUM_LEDS; i++) {
-
-     //leds[i] = worm2[i] + worm1[i] + worm3[i] ;
-  //   //leds[i] = worm1[i];
-  // }
 
   // FastLED.show();
   // int pixel = orientRing(ffIMU.event.orientation.x);
@@ -460,17 +396,19 @@ if (digitalRead(15) == LOW) {
   if (millis() - timer1 > 10000) {
     timer1 = millis();  // reset the timer
     digitalWrite(13, HIGH);
-    // GPS.update(true);
-    // messenger.check(true);
+    
     timer4 = millis();
-    messenger.send(true, 0);
-    delay(500);
-    messenger.send(true, 1);
-    delay(500);
-    messenger.send(true, 2);
-    delay(500);
-    messenger.send(true, 3);
-    delay(500);
+    // messenger.send(true, 0);
+    // delay(500);
+    // messenger.send(true, 1);
+    // delay(500);
+    // messenger.send(true, 2);
+    // delay(500);
+    // messenger.send(true, 3);
+    // delay(500);
+    
+    messenger.send(true, 255);
+
     Serial.print("transmission time: ");
     Serial.println(millis() - timer4);
 

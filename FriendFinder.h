@@ -158,6 +158,9 @@ class ffMessenger : public RHReliableDatagram {
   // Friend Message Array (holds ten friends as is)
   dataPacket friend_msgs[10];
 
+  // Latest message form
+  uint8_t lastFrom;
+
   // Time since last Message
   unsigned long time_of_last_msg;
   unsigned long time_of_last_check;
