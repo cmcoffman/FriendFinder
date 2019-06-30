@@ -17,3 +17,7 @@ FF_calcs.xlsx
 .vscode/ipch/c1807f5a0a88c603/FRIENDFINDER.ipch
 .vscode/arduino.json
 .vscode/ipch/c1807f5a0a88c603/FRIENDFINDER.ipch
+.vscode/arduino.json
+*.json
+*.bin
+*.ipch

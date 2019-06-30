@@ -33,7 +33,7 @@
 #define IMU_INVERT 0
 
 
-#define TOPPIXEL 22
+#define TOPPIXEL 10
 
 // FastLED
 #define DATA_PIN A0

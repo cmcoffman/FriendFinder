@@ -354,24 +354,37 @@ CRGB getColor(int addy) {
     }
 }
 
-
+int buttonState = 0;
 void loop() {
   GPS.update(false);
   messenger.check();
    
 if (digitalRead(15) == LOW) {
-  Serial.println("Button LOW");
-  blink();
-  }
+  
+    	// typical debounce time
+    	delay(20);
+    	
+    	// Lets check again if still low
+if (digitalRead(15) == LOW) {
+    	{
+    	buttonState = (buttonState + 1) % 6;	
+		// Stay here if the thing we need to do is would be done before the user can let go of the button. 
+		// So we dont re-trigger thinking its another press.
+	    	while(digitalRead(15) == LOW); 
+    	}
+    }
+}
+  
 
   messenger.update(false, GPS);
   ffIMU.update(false);
   clearRingWait();
-
+//Serial.println(buttonState);
   // drawCompassWait(CRGB::Red);
   // colorDotWait(orientRing(ffIMU.event.orientation.x - messenger.friend_locs[FRIEND_ADDRESS].bearing), CRGB::Green);
 
-
+  if (buttonState == 0) {
+    //Serial.println(buttonState); 
   makeWorm(redWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[0].bearing), 3, CRGB::Red);
   makeWorm(yellowWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[1].bearing), 3, CRGB::Yellow);
   makeWorm(greenWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[2].bearing), 3, CRGB::Green);
@@ -379,17 +392,68 @@ if (digitalRead(15) == LOW) {
 
   
   for (int i = 0; i < NUM_LEDS; i++) {
-
-     //leds[i] = worm2[i] + worm1[i] + worm3[i] + leds[i];
-     leds[i] = redWorm[i] + yellowWorm[i] + greenWorm[i] + blueWorm[i];
-    //leds[i] = worm1[i];
+    leds[i] = redWorm[i] + yellowWorm[i] + greenWorm[i] + blueWorm[i];
   }
   FastLED.show();
+}
 
+ if (buttonState == 1) { 
 
+  makeWorm(redWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[0].bearing), 3, CRGB::Red);
+  makeWorm(yellowWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[1].bearing), 3, CRGB::Yellow);
+  makeWorm(greenWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[2].bearing), 3, CRGB::Green);
+  makeWorm(blueWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[3].bearing), 3, CRGB::Blue);
 
-  // FastLED.show();
-  // int pixel = orientRing(ffIMU.event.orientation.x);
+  clearRingWait();
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = redWorm[i];
+  }
+  FastLED.show();
+}
+
+if (buttonState == 2) { 
+  
+makeWorm(redWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[0].bearing), 3, CRGB::Red);
+  makeWorm(yellowWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[1].bearing), 3, CRGB::Yellow);
+  makeWorm(greenWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[2].bearing), 3, CRGB::Green);
+  makeWorm(blueWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[3].bearing), 3, CRGB::Blue);
+  clearRingWait();
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = yellowWorm[i];
+  }
+  FastLED.show();
+}
+if (buttonState == 3) { 
+makeWorm(redWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[0].bearing), 3, CRGB::Red);
+  makeWorm(yellowWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[1].bearing), 3, CRGB::Yellow);
+  makeWorm(greenWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[2].bearing), 3, CRGB::Green);
+  makeWorm(blueWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[3].bearing), 3, CRGB::Blue);
+  
+  clearRingWait();
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = greenWorm[i];
+  }
+  FastLED.show();
+}
+
+if (buttonState == 4) { 
+makeWorm(redWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[0].bearing), 3, CRGB::Red);
+  makeWorm(yellowWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[1].bearing), 3, CRGB::Yellow);
+  makeWorm(greenWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[2].bearing), 3, CRGB::Green);
+  makeWorm(blueWorm, orientRing(ffIMU.event.orientation.x - messenger.friend_locs[3].bearing), 3, CRGB::Blue);
+  
+  clearRingWait();
+  for (int i = 0; i < NUM_LEDS; i++) {
+    leds[i] = blueWorm[i];
+  }
+  FastLED.show();
+}
+if (buttonState == 5) { 
+  
+  clearRingWait();
+  drawCompass(CRGB::Pink);
+  FastLED.show();
+}
 
   // Periodic Action
   if (timer1 > millis()) timer1 = millis();  // fix rollover
