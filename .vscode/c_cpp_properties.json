@@ -2,38 +2,24 @@
     "configurations": [
         {
             "name": "Win32",
+            "defines": [
+                "ARDUINO=10800"
+            ],
             "includePath": [
-                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.2\\**",
-                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\esp32\\tools\\**",
-                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.1\\**",
-                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\samd\\1.2.9\\**",
-                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\avr\\1.4.13\\**",
-                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\samd\\1.2.9",
+                "C:\\Users\\Clayton.000\\Dropbox\\Research Organized\\Arduino\\portable\\packages\\adafruit\\hardware\\avr\\1.4.13\\**",
+                "C:\\Users\\Clayton.000\\Dropbox\\Research Organized\\Arduino\\portable\\packages\\adafruit\\tools\\**",
+                "C:\\Users\\Clayton.000\\Dropbox\\Research Organized\\Arduino\\portable\\packages\\adafruit\\hardware\\samd\\1.3.0\\**",
                 "${workspaceRoot}",
-                "${workspaceFolder}",
-                "C:\\Users\\Clayton\\Documents\\Arduino",
-                "C:\\Program Files (x86)\\Arduino\\libraries",
-                "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages\\**",
-                "C:\\Users\\Clayton\\Documents\\Arduino\\libraries\\Adafruit_NeoPixel"
+                "C:\\Users\\Clayton.000\\Dropbox\\Research Organized\\Arduino\\portable\\packages\\esp32\\hardware\\esp32\\1.0.4\\**",
+                "C:\\Users\\Clayton.000\\Dropbox\\Research Organized\\Arduino\\portable\\packages\\esp32\\tools\\**",
+                "C:\\Users\\Clayton.000\\Dropbox\\Research Organized\\Arduino\\hardware\\tools\\**",
+                "C:\\Users\\Clayton.000\\Dropbox\\Research Organized\\Arduino\\libraries\\**",
+                "C:\\Users\\Clayton.000\\Documents\\Arduino\\libraries\\**"
             ],
-            "forcedInclude": [
-                "${workspaceRoot}",
-                "${workspaceRoot}\\src"
-            ],
-            "browse": {
-                "limitSymbolsToIncludedHeaders": false,
-                "path": [
-                    "${workspaceRoot}",
-                    "${workspaceFolder}",
-                    "C:\\Users\\Clayton\\Documents\\Arduino",
-                    "C:\\Program Files (x86)\\Arduino\\libraries",
-                    "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages**"
-                ]
-            },
-            "compilerPath": "C:\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\bin\\avr-gcc.exe",
+            "forcedInclude": [],
+            "intelliSenseMode": "clang-x64",
             "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "clang-x64"
+            "cppStandard": "c++17"
         }
     ],
     "version": 4
