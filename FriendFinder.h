@@ -3,75 +3,15 @@
 
 #include <Adafruit_BNO055.h>
 #include <Adafruit_GPS.h>
-#include <Adafruit_NeoPixel.h>
 #include <Adafruit_Sensor.h>
-#include <FastLED.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #include <Wire.h>
 #include <utility/imumaths.h>
 #include "esp_system.h"
+#include <SPI.h>
 
 #include "FFConfig.h"
-
-// FastLED Ring Suff
-#ifdef ARDUINO_FEATHER_ESP32
-
-//#define CLK_PIN   4
-#define LED_TYPE WS2811
-#define COLOR_ORDER GRB
-#define NUM_LEDS 24
-
-#define BRIGHTNESS 96
-#define FRAMES_PER_SECOND 120
-#endif
-
-#ifdef ARDUINO_SAMD_FEATHER_M0_EXPRESS
-// FastLED
-#define DATA_PIN 5
-//#define CLK_PIN   4
-#define LED_TYPE WS2811
-#define COLOR_ORDER GRB
-#define NUM_LEDS 24
-
-#define BRIGHTNESS 96
-#define FRAMES_PER_SECOND 120
-#endif
-
-class ffNeoRing : public Adafruit_NeoPixel {
- private:
- public:
-  // Constructor
-  ffNeoRing(uint16_t n, uint8_t p = 6, uint8_t t = NEO_GRB + NEO_KHZ800);
-
-  // some simple functions to effect whole strip
-  void clearStrip();
-  void fillStrip(uint32_t c);
-  void show(void);
-  void colorDotWipe(uint32_t c, uint16_t wait);
-  void colorWipe(uint32_t c, uint16_t wait);
-  void colorDot(int pixel, uint32_t color);
-  void flash();
-  int orientRing(int heading);
-
-  // helper functions dealing with Adafruit_NeoPixel::Color (32 bit color)
-  static uint32_t randomColor(void) {
-    return Adafruit_NeoPixel::Color(random(0, 255), random(0, 255),
-                                    random(0, 255));
-  }
-  static uint32_t randomWheelColor(void);
-  static uint32_t colorWheel(
-      byte WheelPos); /*!< colorWheel defines 255 colors of full intensity */
-  static const uint32_t Red;
-  static const uint32_t Green;
-  static const uint32_t Blue;
-  static const uint32_t Yellow;
-  static const uint32_t White;
-  static const uint32_t Grey;
-  static const uint32_t Off;
-  static const uint32_t YellowGreen;
-  static const uint32_t Purple;
-};
 
 class ffGPS : public Adafruit_GPS {
  private:
@@ -120,7 +60,6 @@ struct friendDB {
   float bearing;
   int age_seconds;
   int quality;
-  CRGB color;
 };
 
 class ffRadio : public RH_RF95 {
@@ -132,6 +71,18 @@ class ffRadio : public RH_RF95 {
   // void print(bool verbose);
   // void update(bool verbose);
 };
+
+//#ifdef FFMK2
+class ffDisplay : public TFT_eSPI {
+ private:
+ public:
+  // Constructor
+  ffDisplay();
+  void startup(bool verbose = true);
+  // void print(bool verbose);
+  // void update(bool verbose);
+};
+//#endif
 
 class ffMessenger : public RHReliableDatagram {
  private:

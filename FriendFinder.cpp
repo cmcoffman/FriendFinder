@@ -1,110 +1,6 @@
-// ffNeoRing.cpp
-// a wrapper/dervied class of Adafruit_NeoPixel to add some functionality
-// most everything passes on to the parent class
-
 #include "FriendFinder.h"
-#include <Adafruit_NeoPixel.h>
-//#include <TinyGPS.h>
+
 #include <math.h>
-
-const uint32_t ffNeoRing::Red = Adafruit_NeoPixel::Color(255, 0, 0);
-const uint32_t ffNeoRing::Green = Adafruit_NeoPixel::Color(0, 255, 0);
-const uint32_t ffNeoRing::Blue = Adafruit_NeoPixel::Color(0, 0, 255);
-const uint32_t ffNeoRing::Yellow = Adafruit_NeoPixel::Color(255, 255, 0);
-const uint32_t ffNeoRing::White = Adafruit_NeoPixel::Color(255, 255, 255);
-const uint32_t ffNeoRing::Grey = Adafruit_NeoPixel::Color(64, 64, 64);
-const uint32_t ffNeoRing::Off = Adafruit_NeoPixel::Color(0, 0, 0);
-const uint32_t ffNeoRing::YellowGreen = Adafruit_NeoPixel::Color(128, 255, 0);
-const uint32_t ffNeoRing::Purple = Adafruit_NeoPixel::Color(255, 0, 255);
-
-// wrapper on Adafruit_NeoPixel constructor
-ffNeoRing::ffNeoRing(uint16_t n, uint8_t p, uint8_t t)
-    : Adafruit_NeoPixel(n, p, t) {}
-
-// Color Dot Runs around ring
-void ffNeoRing::colorDotWipe(uint32_t c, uint16_t wait) {
-  for (uint16_t i = 0; i < numPixels(); i++) {
-    setPixelColor(i, c);
-    setPixelColor(i - 1, Adafruit_NeoPixel::Color(0, 0, 0));
-    show();
-    delay(wait);
-  }
-  setPixelColor(numPixels() - 1, Adafruit_NeoPixel::Color(0, 0, 0));
-  show();
-}
-
-// Fill Whole Ring with color
-void ffNeoRing::colorWipe(uint32_t c, uint16_t wait) {
-  for (uint16_t i = 0; i < numPixels(); i++) {
-    setPixelColor(i, c);
-    show();
-    delayMicroseconds(wait);
-  }
-}
-
-void ffNeoRing::colorDot(int pixel, uint32_t color) {
-  for (uint16_t i = 0; i < numPixels(); i++) {
-    if (i == pixel) {
-      setPixelColor(i, color);
-    } else {
-      setPixelColor(i, Off);
-    }
-    show();
-    delay(2);
-  }
-}
-
-void ffNeoRing::flash() {
-  for (int j = 255; j > 0; j--) {
-    for (uint16_t i = 0; i < numPixels(); i++) {
-      setPixelColor(i, Color(j / 1.1, j / 1.1, j / 1.1));
-    }
-    delayMicroseconds(50);
-    show();
-  }
-  delay(1);
-  ffNeoRing::clearStrip();
-  show();
-}
-
-// overload the base class show to check if stripChanged
-void ffNeoRing::show(void) { Adafruit_NeoPixel::show(); }
-
-void ffNeoRing::clearStrip() {
-  for (int i = 0; i < numPixels(); i++) setPixelColor(i, 0);
-}
-
-void ffNeoRing::fillStrip(uint32_t c) {
-  for (int i = 0; i < numPixels(); i++) setPixelColor(i, c);
-}
-
-uint32_t ffNeoRing::randomWheelColor(void) {
-  return colorWheel(random(0, 255));
-}
-
-// Input a value 0 to 255 to get a color value.
-// The colours are a transition r - g - b - back to r.
-uint32_t ffNeoRing::colorWheel(byte WheelPos) {
-  WheelPos = 255 - WheelPos;
-  if (WheelPos < 85) {
-    return Adafruit_NeoPixel::Color(255 - WheelPos * 3, 0, WheelPos * 3);
-  } else if (WheelPos < 170) {
-    WheelPos -= 85;
-    return Adafruit_NeoPixel::Color(0, WheelPos * 3, 255 - WheelPos * 3);
-  } else {
-    WheelPos -= 170;
-    return Adafruit_NeoPixel::Color(WheelPos * 3, 255 - WheelPos * 3, 0);
-  }
-}
-
-int ffNeoRing::orientRing(int heading) {
-  // Get degrees per pixel
-  int degPerPixel = 360 / numPixels();
-  // Calculate pixel for heading
-  int pixelOut = -((heading / degPerPixel) - TOPPIXEL);
-  pixelOut = (pixelOut + 24) % 24;
-  return (pixelOut);
-}
 
 // wrapper on Adafruit_GPS constructor
 ffGPS::ffGPS(HardwareSerial* ser) : Adafruit_GPS(ser) {}
@@ -234,13 +130,35 @@ void ffGPS::print(bool verbose) {
   }
 }
 
+// Display Stuff
+//#ifdef FFMK2
+ffDisplay::ffDisplay() : TFT_eSPI() {}
+
+void ffDisplay::startup(bool verbose) {
+// Setup Display
+if (verbose) Serial.println("Display Startup...");
+  TFT_eSPI::init();
+  TFT_eSPI::fillScreen(TFT_BLACK);
+  TFT_eSPI::setRotation(1);  // 1 is USB on right
+                       // 2 is USB on top
+                       // 3 is USB on left
+                       // 4 is USB on bottom
+                       // 0 - bottom; 5 - right
+}
+//#endif
+
 // Radio Stuff
 // wrapper on RH_RF95 constructor
 ffRadio::ffRadio(uint8_t csPin, uint8_t intPin) : RH_RF95(csPin, intPin) {}
 
 void ffRadio::startup(bool verbose) {
   if (verbose) Serial.println("Radio Startup...");
-
+  #ifdef FFMK1
+  // Radio Enable Pin
+  pinMode(4, OUTPUT); 
+  digitalWrite(4, HIGH);
+  delay(100);
+  #endif
   // Manual Reset
   pinMode(RFM95_RST, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
@@ -272,6 +190,13 @@ ffMessenger::ffMessenger(RHGenericDriver& driver, uint8_t thisAddress)
 
 void ffMessenger::startup(bool verbose) {
   if (verbose) Serial.println("Messenger Startup...");
+  
+  #ifdef FFMK2
+  // Setup HSPI
+  SPI.begin(HSPI_SCK, HSPI_MISO, HSPI_MOSI);
+  delay(1000);
+  #endif
+
   if (!RHReliableDatagram::init() && verbose)
     Serial.println("Messenger Init - FAIL");
   if (RHReliableDatagram::init() && verbose)

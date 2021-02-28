@@ -1,3 +1,67 @@
+
+String getMacAddress() {
+  uint8_t baseMac[6];
+  // Get MAC address for WiFi station
+  esp_read_mac(baseMac, ESP_MAC_WIFI_STA);
+  char baseMacChr[18] = {0};
+  sprintf(baseMacChr, "%02X:%02X:%02X:%02X:%02X:%02X", baseMac[0], baseMac[1],
+          baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
+  Serial.print("My MAC Address: ");
+  Serial.println(String(baseMacChr));
+  return String(baseMacChr);
+}
+
+int getAddress() {
+  // String macRed = "80:7D:3A:F0:E2:E4";
+  // String macYellow = "80:7D:3A:F0:E2:E2";
+  // String macGreen = "80:7D:3A:F0:E2:E1";
+  // String macBlue = "80:7D:3A:F0:E2:E4";
+
+  if (getMacAddress() == MAC_RED) {
+    Serial.print("Friend Address: ");
+    Serial.print(0);
+    Serial.println(" (Red)");
+    return 0;
+  }
+  if (getMacAddress() == MAC_YELLOW) {
+    Serial.print("Friend Address: ");
+    Serial.print(1);
+    Serial.println(" (Yellow)");
+    return 1;
+  }
+  if (getMacAddress() == MAC_GREEN) {
+    Serial.print("Friend Address: ");
+    Serial.print(2);
+    Serial.println(" (Green)");
+    return 2;
+  }
+  if (getMacAddress() == MAC_BLUE) {
+    Serial.print("Friend Address: ");
+    Serial.print(3);
+    Serial.println(" (Blue)");
+    return 3;
+  }
+}
+
+CRGB getColor(int addy) {
+  if (addy == 0) {
+    return CRGB::Red;
+  }
+  if (addy == 1) {
+    return CRGB::Yellow;
+  }
+  if (addy == 2) {
+    return CRGB::Green;
+  }
+  if (addy == 3) {
+    return CRGB::Blue;
+  }
+  if (addy == 4) {
+    return CRGB::Purple;
+  }
+}
+
+
 loop()
 {
     if(button is low)
