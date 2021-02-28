@@ -1,0 +1,24 @@
+/Users/claytoncoffman/Documents/Arduino/FriendFinder/C:\Users\Clayton\Documents\Arduino\build/core/stdlib_noniso.c.o: \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/cores/esp32/stdlib_noniso.c \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/stdlib.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/machine/ieeefp.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/_ansi.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/newlib.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/sys/config.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/sys/features.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/esp32/xtensa/config/core-isa.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/sys/reent.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/_ansi.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/sys/_types.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/machine/_types.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/machine/_default_types.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/sys/lock.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/sys/cdefs.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/machine/stdlib.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/alloca.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/string.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/sys/string.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/stdint.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/sys/_intsup.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/tools/sdk/include/newlib/math.h \
+ /Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/cores/esp32/stdlib_noniso.h
