@@ -10,7 +10,7 @@
                 "${workspaceRoot}",
                 "/Users/claytoncoffman/Library/Arduino15/packages/esp32/hardware/esp32/1.0.4/**",
                 "/Applications/Arduino.app/Contents/Java/libraries/**",
-                "/Users/claytoncoffman/Library/Arduino15/packages/**",
+                "/Users/claytoncoffman/Library/Arduino15/packages/arduino/tools/**",
                 "/Users/claytoncoffman/Documents/Arduino/libraries/**",
                 "/Users/claytoncoffman/Library/Arduino15/packages/esp32/tools/**"
             ],
