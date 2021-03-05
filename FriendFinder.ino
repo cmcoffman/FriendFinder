@@ -2,96 +2,111 @@
 
 ffGPS GPS = ffGPS(&GPSSerial);
 ffRadio radio(RFM95_CS, RFM95_INT);
-ffMessenger messenger(radio, 4);
+ffMessenger messenger(radio, 2);
 ffIMU ffIMU;
-//#ifdef FFMK2
+#ifdef FFMK2
 ffDisplay tft;
-//#endif
+#endif
 
 void setup() {
+  delay(3000);
   Serial.begin(115200);
-  while (!Serial && millis() < 5000);
+  while (!Serial) {
+    ;  // wait for serial port to connect. Needed for native USB
+  }
 
-  GPS.startup();
+  Serial.println(">>> FF STARTUP ./././ ... ");
+  delay(1000);
+  Serial.println("no messenger.startup()");
+  Serial.println("Display Only?");
+  radio.reset(true);
 
-  ffIMU.startup(false);
   tft.startup(true);
-  // MESSENGER MUST START FIRST!!!
 
-  messenger.startup();
+  //Display a simple splash screen
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(40, 5);
+  tft.print(F("Friend"));
+  delay(700);
+  tft.setTextColor(TFT_PINK);
+  tft.print(F("Finder"));
+  delay(700);
+  tft.setCursor(35, 25);
+  tft.println(F("MK2"));
+  delay(1000);
+  tft.fillScreen(TFT_BLACK);
+
+  messenger.startup(true);
+
+  messenger.setTimeout(400);
+  messenger.setRetries(0);
   radio.setFrequency(RF95_FREQ);
   radio.setTxPower(23, false);
 
+  messenger.setThisAddress(3);
 
-  Serial.println("-- Startup Complete --");
+  //GPS.startup();
+
+  ffIMU.startup(false);
+  Serial.println("... // Startup..[COMPLETE!]");
 }
 
-// Conveinient timer construct (at end of loop)
-uint32_t timer1 = millis();
-uint32_t timer2 = millis();
-uint32_t timer3 = millis();
-uint32_t timer4 = millis();
-float dist2;
-
 void loop() {
-  GPS.update(false);
-  messenger.check();
-  messenger.update(false, GPS);
-  ffIMU.update(false);
-  
-  // Periodic Action
-  if (timer1 > millis()) timer1 = millis();  // fix rollover
-  if (millis() - timer1 > 10000) {
-    timer1 = millis();  // reset the timer
-    digitalWrite(13, HIGH);
 
-    timer4 = millis();
-    // messenger.send(true, 0);
-    // delay(500);
-    // messenger.send(true, 1);
-    // delay(500);
-    // messenger.send(true, 2);
-    // delay(500);
-    // messenger.send(true, 3);
-    // delay(500);
+  // GPS.update(false);
+  // messenger.check();
+  // messenger.update(false, GPS);
+  // ffIMU.update(false);
+  Serial.print(" milliseconds since startup: ");
+  Serial.println(millis());
+    //Display a simple splash screen
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextSize(2);
+  tft.setTextColor(TFT_WHITE);
+  tft.setCursor(40, 5);
+  tft.print(F("Friend"));
+  delay(700);
+  tft.setTextColor(TFT_GREEN);
+  tft.print(F("Finder"));
+  delay(700);
+  tft.setCursor(35, 25);
+  tft.println(F("MK2"));
+  delay(1000);
+  tft.fillScreen(TFT_BLACK);
+  // tft.setCursor(0, 0);
+  // tft.print("Message ");
+  // delay(300);
+  // tft.print(". ");
+  // delay(300);
+  // tft.print(". ");
+  // delay(300);
+  // tft.print(". ");
+  // delay(300);
+  messenger.send(true, 255);
+  // tft.println(".sent!");
 
-    messenger.send(true, 255);
 
-    Serial.print("transmission time: ");
-    Serial.println(millis() - timer4);
+  delay(1800);
+}
 
-    digitalWrite(13, LOW);
-  }
 
-  if (timer2 > millis()) timer2 = millis();  // fix rollover
-  if (millis() - timer2 > 6000) {
-    timer2 = millis();  // reset the timer
-    Serial.println("----------");
-    Serial.println("My GPS:");
-    GPS.print();
-    Serial.println("");
-    Serial.println("My Message:");
-    messenger.printPacket(messenger.outPacket);
-    Serial.println("");
-    Serial.println("Friend inPacket:");
-    messenger.printPacket(messenger.inPacket);
-    Serial.println("");
-    Serial.println("Friend DB entry:");
-    messenger.printPacket(messenger.friend_msgs[2]);
-    Serial.println("");
-    Serial.print("My heading: ");
-    Serial.println(ffIMU.event.orientation.x);
-    Serial.print("Bearing to friend: ");
-    Serial.println(messenger.friend_locs[2].bearing);
-    Serial.print("Distance to friend: ");
-    Serial.println(messenger.friend_locs[2].distance_meters);
-
-    // printData(false);
-  }
-
-  if (timer3 > millis()) timer3 = millis();  // fix rollover
-  if (millis() - timer3 > 60000) {
-    timer3 = millis();  // reset the timer
-    // printData(true);
-  }
+void screen_splash() {
+  byte font = 1;
+  tft.setTextFont(font);
+  tft.setTextSize(3);
+  // tft.fillScreen(TFT_BLACK);
+  int padding =
+      tft.textWidth("999", font);  // get the width of the text in pixels
+  tft.setTextColor(TFT_GREEN, TFT_BLUE);
+  tft.setTextPadding(padding);
+  // tft.setTextColor(TFT_BLACK, TFT_RED);
+  tft.setCursor(0, 0, 2);
+  // Set the font colour to be white with a black background, set text size multiplier to 1
+  tft.setTextColor(TFT_WHITE,TFT_BLACK);  tft.setTextSize(1);
+  // We can now plot text on screen using the "print" class
+  tft.println("Hello World!");
+  tft.drawCentreString("FriendFinder", TFT_HEIGHT / 2, TFT_WIDTH / 2, 1);
+  // tft.drawRightString("FriendFinder", 150, 50, 1);
 }

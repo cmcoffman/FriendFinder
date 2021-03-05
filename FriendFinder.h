@@ -8,7 +8,7 @@
 #include <RH_RF95.h>
 #include <Wire.h>
 #include <utility/imumaths.h>
-#include "esp_system.h"
+//#include "esp_system.h"
 #include <SPI.h>
 
 #include "FFConfig.h"
@@ -68,6 +68,7 @@ class ffRadio : public RH_RF95 {
   // Constructor
   ffRadio(uint8_t csPin, uint8_t intPin);
   void startup(bool verbose = true);
+  void reset(bool verbose = true);
   // void print(bool verbose);
   // void update(bool verbose);
 };

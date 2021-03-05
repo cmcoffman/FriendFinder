@@ -76,10 +76,10 @@ void ffGPS::update(bool verbose) {
       }
     }
   } else {
-     if (verbose) {
-       // Decided not to print a message if there's nothing.
-        //Serial.println("*No NMEA*");
-     }
+    if (verbose) {
+      // Decided not to print a message if there's nothing.
+      // Serial.println("*No NMEA*");
+    }
   }
 }
 
@@ -131,21 +131,30 @@ void ffGPS::print(bool verbose) {
 }
 
 // Display Stuff
-//#ifdef FFMK2
+#ifdef FFMK2
 ffDisplay::ffDisplay() : TFT_eSPI() {}
 
 void ffDisplay::startup(bool verbose) {
-// Setup Display
-if (verbose) Serial.println("Display Startup...");
+  // Setup Display
+  if (verbose) Serial.println("Display Startup...");
+  ffDisplay::fillScreen(TFT_BLACK);
   TFT_eSPI::init();
+  ffDisplay::fillScreen(TFT_PINK);
+  delay(100);
+  TFT_eSPI::fillScreen(TFT_YELLOW);
+  delay(100);
+  TFT_eSPI::fillScreen(TFT_LIGHTGREY);
+  delay(100);
   TFT_eSPI::fillScreen(TFT_BLACK);
   TFT_eSPI::setRotation(1);  // 1 is USB on right
-                       // 2 is USB on top
-                       // 3 is USB on left
-                       // 4 is USB on bottom
-                       // 0 - bottom; 5 - right
+                             // 2 is USB on top
+                             // 3 is USB on left
+                             // 4 is USB on bottom
+                             // 0 - bottom; 5 - right
+  //TFT_eSPI::setCursor(1,1);                             
+    
 }
-//#endif
+#endif
 
 // Radio Stuff
 // wrapper on RH_RF95 constructor
@@ -153,20 +162,29 @@ ffRadio::ffRadio(uint8_t csPin, uint8_t intPin) : RH_RF95(csPin, intPin) {}
 
 void ffRadio::startup(bool verbose) {
   if (verbose) Serial.println("Radio Startup...");
-  #ifdef FFMK1
+#ifdef FFMK1
   // Radio Enable Pin
-  pinMode(4, OUTPUT); 
+  pinMode(4, OUTPUT);
   digitalWrite(4, HIGH);
   delay(100);
-  #endif
-  // Manual Reset
-  pinMode(RFM95_RST, OUTPUT);
-  digitalWrite(RFM95_RST, HIGH);
-  delay(100);
-  digitalWrite(RFM95_RST, LOW);
-  delay(10);
-  digitalWrite(RFM95_RST, HIGH);
-  delay(10);
+#endif
+  // // Manual Reset
+  // digitalWrite(RFM95_RST, HIGH);
+  // pinMode(RFM95_RST, OUTPUT);
+  // digitalWrite(RFM95_RST, HIGH);
+  // delay(100);
+  // digitalWrite(RFM95_RST, LOW);
+  // delay(10);
+  // digitalWrite(RFM95_RST, HIGH);
+  // delay(10);
+  // delay(1000);
+  // pinMode(RFM95_RST, OUTPUT);
+  // digitalWrite(RFM95_RST, HIGH);
+  // delay(100);
+  // digitalWrite(RFM95_RST, LOW);
+  // delay(10);
+  // digitalWrite(RFM95_RST, HIGH);
+  // delay(10);
 
   bool init = RH_RF95::init();
   if (!init && verbose) Serial.println("RF95 Init - FAIL");
@@ -181,18 +199,36 @@ void ffRadio::startup(bool verbose) {
   if (verbose) Serial.println("-End Radio Init-");
 }
 
+void ffRadio::reset(bool verbose) {
+  if (verbose) Serial.print("Reset Radio...");
+  // Manual Reset
+  digitalWrite(RFM95_RST, HIGH);
+  pinMode(RFM95_RST, OUTPUT);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(100);
+  digitalWrite(RFM95_RST, LOW);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(10);
+  delay(1000);
+  if (verbose) Serial.println("done!");
+}
+
 // Messaging Stuff
 // wrapper on RHReliableDatagram constructor
 ffMessenger::ffMessenger(RHGenericDriver& driver, uint8_t thisAddress)
     : RHReliableDatagram(driver, thisAddress) {
-      lastFrom = 4;
-    }
+   lastFrom = 4;
+}
 
 void ffMessenger::startup(bool verbose) {
   if (verbose) Serial.println("Messenger Startup...");
-  
+
   #ifdef FFMK2
   // Setup HSPI
+#define HSPI_SCK 25
+#define HSPI_MISO 27
+#define HSPI_MOSI 26
   SPI.begin(HSPI_SCK, HSPI_MISO, HSPI_MOSI);
   delay(1000);
   #endif
@@ -201,7 +237,6 @@ void ffMessenger::startup(bool verbose) {
     Serial.println("Messenger Init - FAIL");
   if (RHReliableDatagram::init() && verbose)
     Serial.println("Messenger Init - OK");
-
 }
 
 void ffMessenger::printPacket(dataPacket packet) {
@@ -240,11 +275,11 @@ void ffMessenger::check(bool verbose) {
         Serial.print("got request from : ");
         Serial.print(from, DEC);
         Serial.print(": ");
-        
+
         for (int i = 0; i < (RH_RF95_MAX_MESSAGE_LEN - 1); i++) {
           Serial.print(inBuf[i], HEX);
           // Serial.print(" ");
-          //colorWipe(getColor(from));
+          // colorWipe(getColor(from));
         }
         Serial.print("LAtest = ");
         Serial.println(lastFrom);
@@ -256,11 +291,9 @@ void ffMessenger::check(bool verbose) {
       //   Serial.println("sendtoWait failed");
       time_since_last_msg = millis() - time_of_last_msg;
       lastFrom = from;
-      
     }
   } else {
     lastFrom = 4;
-    
   }
   time_since_last_msg = millis() - time_of_last_msg;
 }
@@ -274,77 +307,69 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
     if (verbose) Serial.println("Messenger: No GPS Fix");
   }
   if (myGPS.fixquality > B0) {
+    //   char lat;                 ///< N/S
+    // char lon;                 ///< E/W
 
-  //   char lat;                 ///< N/S
-  // char lon;                 ///< E/W
-
-  if (myGPS.lat == 'N') {
-    outPacket.latitude_fixed = myGPS.latitude_fixed;
-  }
-  if (myGPS.lat == 'S') {
-    outPacket.latitude_fixed = myGPS.latitude_fixed;
-  }
+    if (myGPS.lat == 'N') {
+      outPacket.latitude_fixed = myGPS.latitude_fixed;
+    }
+    if (myGPS.lat == 'S') {
+      outPacket.latitude_fixed = myGPS.latitude_fixed;
+    }
     if (myGPS.lon == 'W') {
-    outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
-  }
-  if (myGPS.lat == 'E') {
-    outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
-  }
-    //outPacket.longitude_fixed = myGPS.longitude_fixed;
+      outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
+    }
+    if (myGPS.lat == 'E') {
+      outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
+    }
+    // outPacket.longitude_fixed = myGPS.longitude_fixed;
     outPacket.fixquality = myGPS.fixquality;
     outPacket.satellites = myGPS.satellites;
     outPacket.HDOP = myGPS.HDOP;
 
-// Copy to message database
-friend_msgs[myAddy].fixquality = outPacket.fixquality;
-friend_msgs[myAddy].latitude_fixed = outPacket.latitude_fixed;
-friend_msgs[myAddy].longitude_fixed = outPacket.longitude_fixed;
-// // debug unit test thing
-//       outPacket.latitude_fixed = 361375000;
-//   outPacket.longitude_fixed = 867851560;
-//   outPacket.fixquality = 1;
+    // Copy to message database
+    friend_msgs[myAddy].fixquality = outPacket.fixquality;
+    friend_msgs[myAddy].latitude_fixed = outPacket.latitude_fixed;
+    friend_msgs[myAddy].longitude_fixed = outPacket.longitude_fixed;
+    // // debug unit test thing
+    //       outPacket.latitude_fixed = 361375000;
+    //   outPacket.longitude_fixed = 867851560;
+    //   outPacket.fixquality = 1;
 
     if (verbose) Serial.println("Messenger: GPS Fix, updated outPacket");
   }
 
   // Update friendDB with distances and headings
-float divisor = 10000000.0;
+  float divisor = 10000000.0;
   // First Update My own data
-   if (friend_msgs[myAddy].fixquality != 0) {
+  if (friend_msgs[myAddy].fixquality != 0) {
     friend_locs[myAddy].latitude = friend_msgs[myAddy].latitude_fixed / divisor;
-    friend_locs[myAddy].longitude = friend_msgs[myAddy].longitude_fixed / divisor;
-    friend_locs[myAddy].distance_meters = haversine(
-        friend_locs[myAddy].latitude,
-        friend_locs[myAddy].longitude,
-        friend_locs[myAddy].latitude,
-        friend_locs[myAddy].longitude);
+    friend_locs[myAddy].longitude =
+        friend_msgs[myAddy].longitude_fixed / divisor;
+    friend_locs[myAddy].distance_meters =
+        haversine(friend_locs[myAddy].latitude, friend_locs[myAddy].longitude,
+                  friend_locs[myAddy].latitude, friend_locs[myAddy].longitude);
     friend_locs[myAddy].bearing =
-        bearing(friend_locs[myAddy].latitude,
-                friend_locs[myAddy].longitude,
-                friend_locs[myAddy].latitude,
-                friend_locs[myAddy].longitude);
-    }
+        bearing(friend_locs[myAddy].latitude, friend_locs[myAddy].longitude,
+                friend_locs[myAddy].latitude, friend_locs[myAddy].longitude);
+  }
 
-// update the whole thing now
+  // update the whole thing now
   for (int i = 0; i < 10; i++) {
     // skip if bad fix
-   if (friend_msgs[i].fixquality == 0) {
+    if (friend_msgs[i].fixquality == 0) {
       continue;
     }
 
     friend_locs[i].latitude = friend_msgs[i].latitude_fixed / divisor;
     friend_locs[i].longitude = friend_msgs[i].longitude_fixed / divisor;
 
-    friend_locs[i].distance_meters = haversine(
-        friend_locs[myAddy].latitude,
-        friend_locs[myAddy].longitude,
-        friend_locs[i].latitude,
-        friend_locs[i].longitude);
+    friend_locs[i].distance_meters =
+        haversine(friend_locs[myAddy].latitude, friend_locs[myAddy].longitude,
+                  friend_locs[i].latitude, friend_locs[i].longitude);
     friend_locs[i].bearing =
-        bearing(friend_locs[myAddy].latitude,
-                friend_locs[myAddy].longitude,
-                friend_locs[i].latitude,
-                friend_locs[i].longitude);
+        bearing(friend_locs[myAddy].latitude, friend_locs[myAddy].longitude,
+                friend_locs[i].latitude, friend_locs[i].longitude);
     if (verbose) {
       Serial.print("Friend ");
       Serial.print(i);
@@ -391,7 +416,8 @@ void ffMessenger::send(bool verbose, uint8_t to) {
 
 // float ffMessenger::calcDistance(uint32_t my_lat, uint32_t my_long,
 //                                 uint32_t their_lat, uint32_t their_long) {
-//   // float TinyGPS::distance_between (float lat1, float long1, float lat2, float
+//   // float TinyGPS::distance_between (float lat1, float long1, float lat2,
+//   float
 //   // long2)
 //   // returns value in meters
 //   my_lat /= 10000000;
@@ -447,7 +473,8 @@ uint32_t ffMessenger::haversine(float lat1, float lon1, float lat2,
 
 //   float a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1 * ToRad) *
 //                                                 cos(lat2 * ToRad) *
-//                                                 sin(dLon / 2) * sin(dLon / 2);
+//                                                 sin(dLon / 2) * sin(dLon /
+//                                                 2);
 
 //   float c = 2 * atan2(sqrt(a), sqrt(1 - a));
 
@@ -456,8 +483,7 @@ uint32_t ffMessenger::haversine(float lat1, float lon1, float lat2,
 //   return distance;
 // }
 
-int ffMessenger::bearing(float lat1, float lon1, float lat2,
-                         float lon2) {
+int ffMessenger::bearing(float lat1, float lon1, float lat2, float lon2) {
   // Gotten from:
   // https://gis.stackexchange.com/questions/252672/calculate-bearing-between-two-decimal-gps-coordinates-arduino-c?newreg=eb676d9dca8f4cc8ad10c14a3b00d423
 
