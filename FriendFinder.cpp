@@ -6,14 +6,27 @@
 ffGPS::ffGPS(HardwareSerial* ser) : Adafruit_GPS(ser) {}
 
 void ffGPS::startup(bool verbose) {
+  if (verbose) Serial.println("GPS Startup...");
+#ifdef FFMK2
+  GPSSerial.begin(9600, SERIAL_8N1, GPSRX, GPSTX);
+
+  // if(!GPSSerial.begin(9600, SERIAL_8N1, GPSRX, GPSTX)) {
+  //   Serial.println("GPS - FAIL");
+  // } else {
+  //   Serial.println("GPS - OK");
+  // }
+
+#else
   Adafruit_GPS::begin(9600);
+#endif
+
   // turn on only GPRMC sentence
   // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_OUTPUT_RMCONLY);
   // turn on GPRMC and GGA
-  // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
+  Adafruit_GPS::sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
   // GGA only
-  Adafruit_GPS::sendCommand(
-      "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29");
+  // Adafruit_GPS::sendCommand(
+  //   "$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29");
   // turn on ALL THE DATA
   // Adafruit_GPS::sendCommand(PMTK_SET_NMEA_OUTPUT_ALLDATA);
   // turn off output
@@ -131,7 +144,7 @@ void ffGPS::print(bool verbose) {
 }
 
 // Display Stuff
-#ifdef FFMK2
+//#ifdef FFMK2
 ffDisplay::ffDisplay() : TFT_eSPI() {}
 
 void ffDisplay::startup(bool verbose) {
@@ -151,10 +164,99 @@ void ffDisplay::startup(bool verbose) {
                              // 3 is USB on left
                              // 4 is USB on bottom
                              // 0 - bottom; 5 - right
-  //TFT_eSPI::setCursor(1,1);                             
-    
+  // TFT_eSPI::setCursor(1,1);
 }
-#endif
+
+// void ffDisplay::drawPage(int page) {
+//   if (page_change) {
+//     fillScreen(TFT_BLACK);
+//   }
+//   if (page != 1) {
+//     digitalWrite(TFT_BL, HIGH);
+//   }
+
+// #define NUM_PAGES 3
+//   switch (page) {
+//     case 1:
+//       ffDisplay::screen_off();
+//       page_change = false;
+//       break;
+//     case 2:
+//       ffDisplay::screen_splash();
+//       page_change = false;
+//       break;
+//     case 3:
+//       ffDisplay::screen_IMU();
+//       page_change = false;
+//       break;
+//     default:
+//       ffDisplay::screen_splash();
+//       page_change = false;
+//       break;
+//   }
+// }
+
+// void ffDisplay::screen_off() {
+//   fillScreen(TFT_BLACK);
+//   digitalWrite(TFT_BL, LOW);
+// }
+
+// void ffDisplay::screen_splash() {
+//   byte font = 1;
+//   setTextFont(font);
+//   setTextSize(3);
+//   // tft.fillScreen(TFT_BLACK);
+//   int padding = textWidth("999", font);  // get the width of the text in pixels
+//   setTextColor(TFT_GREEN, TFT_BLUE);
+//   setTextPadding(padding);
+//   // setTextColor(TFT_BLACK, TFT_RED);
+//   drawCentreString("FriendFinder", TFT_HEIGHT / 2, TFT_WIDTH / 2, 1);
+//   // drawRightString("FriendFinder", 150, 50, 1);
+// }
+
+// void ffDisplay::screen_IMU(ffIMU myIMU) {
+//   int font = 1;
+//   int size = 2;
+//   setTextFont(font);
+//   setTextSize(size);
+//   int fontHeight = fontHeight(font);
+//   int padding = textWidth("999", font);  // get the width of the text in pixels
+//   setTextColor(TFT_BLACK, TFT_LIGHTGREY);
+//   setTextPadding(padding);
+
+//   // Draw the static parts just once
+//   if (page_change) {
+//     // Background
+//     fillScreen(TFT_LIGHTGREY);
+//     // Text Labels
+//     drawString("   ORI", 0, 3 + fontHeight * 0, 1);
+//     drawString("X:", 3, fontHeight * 1, 1);
+//     drawString("Y:", 3, fontHeight * 2, 1);
+//     drawString("Z:", 3, fontHeight * 3, 1);
+//     drawString("Lat:", 3, fontHeight * 4, 1);
+//     drawString("Lon:", 3, fontHeight * 5, 1);
+//   }
+
+//   int x = random(0, 360);
+//   int y = random(0, 360);
+//   int z = random(0, 360);
+
+//   char buf[5];
+//   dtostrf(myIMU.event.orientation.x, 4, 0, buf);
+//   setTextColor(TFT_RED, TFT_LIGHTGREY);
+//   drawRightString(buf, textWidth(buf) + textWidth("X:"), 3 + fontHeight * 1, 1);
+
+//   // char buf[3];
+//   dtostrf(myIMU.event.orientation.y, 4, 0, buf);
+//   setTextColor(TFT_DARKGREEN, TFT_LIGHTGREY);
+//   drawRightString(buf, textWidth(buf) + textWidth("X:"), 3 + fontHeight * 2, 1);
+
+//   // char buf[3];
+//   dtostrf(myIMU.event.orientation.z, 4, 0, buf);
+//   setTextColor(TFT_BLUE, TFT_LIGHTGREY);
+//   drawRightString(buf, textWidth(buf) + textWidth("X:"), 3 + fontHeight * 3, 1);
+// }
+// //#endif
 
 // Radio Stuff
 // wrapper on RH_RF95 constructor
@@ -218,20 +320,20 @@ void ffRadio::reset(bool verbose) {
 // wrapper on RHReliableDatagram constructor
 ffMessenger::ffMessenger(RHGenericDriver& driver, uint8_t thisAddress)
     : RHReliableDatagram(driver, thisAddress) {
-   lastFrom = 4;
+  lastFrom = 4;
 }
 
 void ffMessenger::startup(bool verbose) {
   if (verbose) Serial.println("Messenger Startup...");
 
-  #ifdef FFMK2
-  // Setup HSPI
+#ifdef FFMK2
+    // Setup HSPI
 #define HSPI_SCK 25
 #define HSPI_MISO 27
 #define HSPI_MOSI 26
   SPI.begin(HSPI_SCK, HSPI_MISO, HSPI_MOSI);
   delay(1000);
-  #endif
+#endif
 
   if (!RHReliableDatagram::init() && verbose)
     Serial.println("Messenger Init - FAIL");
@@ -314,12 +416,12 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
       outPacket.latitude_fixed = myGPS.latitude_fixed;
     }
     if (myGPS.lat == 'S') {
-      outPacket.latitude_fixed = myGPS.latitude_fixed;
+      outPacket.latitude_fixed = myGPS.latitude_fixed * -1;
+    }
+    if (myGPS.lon == 'E') {
+      outPacket.longitude_fixed = myGPS.longitude_fixed;
     }
     if (myGPS.lon == 'W') {
-      outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
-    }
-    if (myGPS.lat == 'E') {
       outPacket.longitude_fixed = myGPS.longitude_fixed * -1;
     }
     // outPacket.longitude_fixed = myGPS.longitude_fixed;
@@ -538,12 +640,6 @@ void ffIMU::startup(bool verbose) {
   if (verbose) Serial.println("-End IMU Init-");
 }
 
-/**************************************************************************/
-/*
-    Displays some basic information on this sensor from the unified
-    sensor API sensor_t type (see Adafruit_Sensor for more information)
-*/
-/**************************************************************************/
 void ffIMU::displaySensorDetails() {
   sensor_t sensor;
   Adafruit_BNO055::getSensor(&sensor);
@@ -568,11 +664,6 @@ void ffIMU::displaySensorDetails() {
   delay(500);
 }
 
-/**************************************************************************/
-/*
-    Display some basic info about the sensor status
-*/
-/**************************************************************************/
 void ffIMU::displaySensorStatus() {
   /* Get the system status values (mostly for debugging purposes) */
   uint8_t system_status, self_test_results, system_error;
@@ -592,11 +683,6 @@ void ffIMU::displaySensorStatus() {
   delay(500);
 }
 
-/**************************************************************************/
-/*
-    Display sensor calibration status
-*/
-/**************************************************************************/
 void ffIMU::displayCalStatus() {
   /* Get the four calibration values (0..3) */
   /* Any sensor data reporting 0 should be ignored, */
@@ -636,3 +722,61 @@ void ffIMU::update(bool verbose) {
     Serial.println(event.orientation.z, 4);
   }
 }
+
+ffEntanglement::ffEntanglement(ffGPS myGPS, ffMessenger myMessenger,
+                               ffIMU myIMU) {}
+
+void ffEntanglement::update(ffGPS myGPS,
+                            ffMessenger myMessenger,
+                            ffIMU myIMU) {
+
+  self.fix_quality = myGPS.fixquality;
+  
+  if (myGPS.fixquality == B0) {
+    self.fix_quality = 0;
+   // if (verbose) Serial.println("Entanglement: No GPS Fix");
+  }
+  if (myGPS.fixquality > B0) {
+    //   char lat;                 ///< N/S
+    // char lon;                 ///< E/W
+
+    if (myGPS.lat == 'N') {
+      self.latitude = myGPS.latitude_fixed;
+    }
+    if (myGPS.lat == 'S') {
+      self.latitude = myGPS.latitude_fixed * -1;
+    }
+    if (myGPS.lon == 'E') {
+      self.longitude = myGPS.longitude_fixed;
+    }
+    if (myGPS.lon == 'W') {
+      self.longitude = myGPS.longitude_fixed * -1;
+    }
+  }
+  self.orientation_x = myIMU.event.orientation.x;
+  self.orientation_y = myIMU.event.orientation.y;
+  self.orientation_z = myIMU.event.orientation.z;
+}
+
+// // Buttons to work on
+// #ifdef FFMK2
+// ffButton::ffButton() : Button2() {}
+
+// void ffIMU::startup(bool verbose) {
+//   if (verbose) Serial.println("IMU Startup...");
+
+//   /* Initialise the sensor */
+//   bool init = Adafruit_BNO055::begin();
+//   Adafruit_BNO055::setExtCrystalUse(true);
+//   if (!init && verbose) Serial.println("IMU Init - FAIL");
+//   if (init && verbose) {
+//     Serial.println("IMU Init - OK");
+
+//     /* Display some basic information on this sensor */
+//     ffIMU::displaySensorDetails();
+
+//     /* Optional: Display current status */
+//     ffIMU::displaySensorStatus();
+//   }
+//   if (verbose) Serial.println("-End IMU Init-");
+// }

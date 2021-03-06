@@ -3,13 +3,15 @@
 // FFMK2-Display.h
 #define FFMK2
 #include <TFT_eSPI.h>
-#include <Button2.h>
+
 
 // Display Stuff-----
 //TFT_eSPI tft = TFT_eSPI();  // x = 135, y = 240
 
 // GPS Stuff-----
 #define GPSSerial Serial2
+#define GPSRX 37
+#define GPSTX 38
 
 // Radio Stuff-----
 #define MY_ADDRESS 2
@@ -22,6 +24,9 @@
 #define HSPI_MISO 27
 #define HSPI_MOSI 26
 
+// Button Stuff ----
+#define BUTTON_A_PIN 0
+#define BUTTON_B_PIN 35
 
 
 #endif // close

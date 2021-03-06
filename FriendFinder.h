@@ -4,14 +4,16 @@
 #include <Adafruit_BNO055.h>
 #include <Adafruit_GPS.h>
 #include <Adafruit_Sensor.h>
+#include <Button2.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
+#include <SPI.h>
+#include <TFT_eSPI.h>
 #include <Wire.h>
 #include <utility/imumaths.h>
-//#include "esp_system.h"
-#include <SPI.h>
 
 #include "FFConfig.h"
+//#include "esp_system.h"
 
 class ffGPS : public Adafruit_GPS {
  private:
@@ -23,7 +25,7 @@ class ffGPS : public Adafruit_GPS {
   void startup(bool verbose = true);
   void print(bool verbose = true);
   void update(bool verbose = true);
-
+  /*/
   // GPS Data
   // uint8_t hour, minute, seconds, year, month, day;
   //   uint16_t milliseconds;
@@ -41,15 +43,16 @@ class ffGPS : public Adafruit_GPS {
   //   char lat, lon, mag;
   //   boolean fix;
   //   uint8_t fixquality, satellites;
+/*/
 };
 
 // Data Packet
 struct dataPacket {
   int32_t latitude_fixed;   // 4 bytes
   int32_t longitude_fixed;  // 4 bytes
-  uint8_t fixquality;        // 1 byte
-  uint8_t satellites;        // 1 byte
-  uint16_t HDOP;             // 2 bytes
+  uint8_t fixquality;       // 1 byte
+  uint8_t satellites;       // 1 byte
+  uint16_t HDOP;            // 2 bytes
 };
 
 // Friends Loc and Distance
@@ -60,6 +63,16 @@ struct friendDB {
   float bearing;
   int age_seconds;
   int quality;
+};
+
+// Status
+struct ffStatus {
+  uint8_t fix_quality;
+  float latitude;
+  float longitude;
+  float orientation_x;
+  float orientation_y;
+  float orientation_z;
 };
 
 class ffRadio : public RH_RF95 {
@@ -73,17 +86,23 @@ class ffRadio : public RH_RF95 {
   // void update(bool verbose);
 };
 
-//#ifdef FFMK2
 class ffDisplay : public TFT_eSPI {
  private:
  public:
   // Constructor
   ffDisplay();
+
+  // Methods
   void startup(bool verbose = true);
-  // void print(bool verbose);
-  // void update(bool verbose);
+  // void drawPage(int page);
+  // void screen_off();
+  // void screen_splash();
+  // void screen_IMU(ffIMU myIMU);
+
+  // Values
+  int page;
+  bool page_change = true;
 };
-//#endif
 
 class ffMessenger : public RHReliableDatagram {
  private:
@@ -100,8 +119,7 @@ class ffMessenger : public RHReliableDatagram {
 
   uint32_t haversine(float lat1, float lon1, float lat2, float lon2);
 
-  int bearing(float lat1, float lon1, float lat2,
-                           float lon2);
+  int bearing(float lat1, float lon1, float lat2, float lon2);
 
   // Ingoing and Outgoing Datapackets
   dataPacket inPacket;
@@ -148,6 +166,20 @@ class ffIMU : public Adafruit_BNO055 {
 
   // Calibration Status
   uint8_t system, gyro, accel, mag;
+};
+
+class ffEntanglement {
+ private:
+ public:
+  // Constructor
+  ffEntanglement(ffGPS myGPS, ffMessenger myMessenger, ffIMU myIMU);
+
+  // Methods
+  void update(ffGPS myGPS, ffMessenger myMessenger, ffIMU myIMU);
+  // void printStatus();
+
+  // Data
+  ffStatus self;
 };
 
 #endif  // Close Library

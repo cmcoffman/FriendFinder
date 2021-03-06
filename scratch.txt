@@ -1,3 +1,13 @@
+// GPS
+#define GPSSerial Serial2
+#define GPSRX 37
+#define GPSTX 38
+Adafruit_GPS GPS(&GPSSerial);
+// in setup{}
+GPSSerial.begin(9600, SERIAL_8N1, GPSRX, GPSTX);
+
+
+
 
 String getMacAddress() {
   uint8_t baseMac[6];

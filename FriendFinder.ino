@@ -23,7 +23,7 @@ void setup() {
 
   tft.startup(true);
 
-  //Display a simple splash screen
+  // Display a simple splash screen
   tft.fillScreen(TFT_BLACK);
   tft.setTextSize(2);
   tft.setTextColor(TFT_WHITE);
@@ -47,66 +47,32 @@ void setup() {
 
   messenger.setThisAddress(3);
 
-  //GPS.startup();
+  GPS.startup();
 
   ffIMU.startup(false);
   Serial.println("... // Startup..[COMPLETE!]");
 }
 
+unsigned long GPS_previousMillis;
+
 void loop() {
-
-  // GPS.update(false);
-  // messenger.check();
-  // messenger.update(false, GPS);
-  // ffIMU.update(false);
-  Serial.print(" milliseconds since startup: ");
-  Serial.println(millis());
-    //Display a simple splash screen
+  GPS.update(true);
+  GPS.print();
+  messenger.check();
+  messenger.update(false, GPS);
+  ffIMU.update(false);
   tft.fillScreen(TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(40, 5);
-  tft.print(F("Friend"));
-  delay(700);
+  tft.setTextColor(TFT_YELLOW);
+  tft.setTextFont(6);
+  tft.setTextSize(1);
+  tft.setCursor(1, 1);
+  tft.println(millis());
   tft.setTextColor(TFT_GREEN);
-  tft.print(F("Finder"));
-  delay(700);
-  tft.setCursor(35, 25);
-  tft.println(F("MK2"));
-  delay(1000);
-  tft.fillScreen(TFT_BLACK);
-  // tft.setCursor(0, 0);
-  // tft.print("Message ");
-  // delay(300);
-  // tft.print(". ");
-  // delay(300);
-  // tft.print(". ");
-  // delay(300);
-  // tft.print(". ");
-  // delay(300);
+  tft.setTextFont(4);
+
   messenger.send(true, 255);
-  // tft.println(".sent!");
 
 
-  delay(1800);
-}
-
-
-void screen_splash() {
-  byte font = 1;
-  tft.setTextFont(font);
-  tft.setTextSize(3);
-  // tft.fillScreen(TFT_BLACK);
-  int padding =
-      tft.textWidth("999", font);  // get the width of the text in pixels
-  tft.setTextColor(TFT_GREEN, TFT_BLUE);
-  tft.setTextPadding(padding);
-  // tft.setTextColor(TFT_BLACK, TFT_RED);
-  tft.setCursor(0, 0, 2);
-  // Set the font colour to be white with a black background, set text size multiplier to 1
-  tft.setTextColor(TFT_WHITE,TFT_BLACK);  tft.setTextSize(1);
-  // We can now plot text on screen using the "print" class
-  tft.println("Hello World!");
-  tft.drawCentreString("FriendFinder", TFT_HEIGHT / 2, TFT_WIDTH / 2, 1);
-  // tft.drawRightString("FriendFinder", 150, 50, 1);
+  delay(800);
+  
 }
