@@ -14,7 +14,7 @@
 #define GPSTX 38
 
 // Radio Stuff-----
-#define MY_ADDRESS 2
+#define MY_ADDRESS 5
 #define THEIR_ADDRESS 1
 #define RFM95_CS 33
 #define RFM95_RST 2

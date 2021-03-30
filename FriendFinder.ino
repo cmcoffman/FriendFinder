@@ -4,8 +4,9 @@ ffGPS GPS = ffGPS(&GPSSerial);
 ffRadio radio(RFM95_CS, RFM95_INT);
 ffMessenger messenger(radio, 2);
 ffIMU ffIMU;
+ffEntanglement entanglement(GPS, messenger, ffIMU);
 #ifdef FFMK2
-ffDisplay tft;
+ffDisplay ffDisplay(&entanglement);
 #endif
 
 void setup() {
@@ -21,58 +22,61 @@ void setup() {
   Serial.println("Display Only?");
   radio.reset(true);
 
-  tft.startup(true);
+  ffDisplay.startup(true);
 
   // Display a simple splash screen
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_WHITE);
-  tft.setCursor(40, 5);
-  tft.print(F("Friend"));
+  ffDisplay.fillScreen(TFT_BLACK);
+  ffDisplay.setTextSize(2);
+  ffDisplay.setTextColor(TFT_WHITE);
+  ffDisplay.setCursor(40, 5);
+  ffDisplay.print(F("Friend"));
   delay(700);
-  tft.setTextColor(TFT_PINK);
-  tft.print(F("Finder"));
+  ffDisplay.setTextColor(TFT_PINK);
+  ffDisplay.print(F("Finder"));
   delay(700);
-  tft.setCursor(35, 25);
-  tft.println(F("MK2"));
+  ffDisplay.setCursor(35, 25);
+  ffDisplay.println(F("MK2"));
   delay(1000);
-  tft.fillScreen(TFT_BLACK);
+  ffDisplay.fillScreen(TFT_BLACK);
 
-  messenger.startup(true);
+  // messenger.startup(true);
 
-  messenger.setTimeout(400);
-  messenger.setRetries(0);
+  // messenger.setTimeout(400);
+  // messenger.setRetries(0);
   radio.setFrequency(RF95_FREQ);
   radio.setTxPower(23, false);
 
-  messenger.setThisAddress(3);
+  // messenger.setThisAddress(3);
 
-  GPS.startup();
+  //GPS.startup();
 
   ffIMU.startup(false);
   Serial.println("... // Startup..[COMPLETE!]");
+
+  ffDisplay.setPage(SCREEN_OFF);
+  delay(500);
+  //ffDisplay.setPage(2);
 }
 
 unsigned long GPS_previousMillis;
 
 void loop() {
   GPS.update(true);
-  GPS.print();
-  messenger.check();
-  messenger.update(false, GPS);
+  //GPS.print();
+  // messenger.check();
+  // messenger.update(false, GPS);
   ffIMU.update(false);
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextColor(TFT_YELLOW);
-  tft.setTextFont(6);
-  tft.setTextSize(1);
-  tft.setCursor(1, 1);
-  tft.println(millis());
-  tft.setTextColor(TFT_GREEN);
-  tft.setTextFont(4);
-
-  messenger.send(true, 255);
+  
 
 
-  delay(800);
+  // messenger.send(true, 255);
+  entanglement.entangle(ffIMU);
+  //entanglement.entangle(ffGPS);
+  //entanglement.entangle(ffIMU);
+  //entanglement.printSelfStatus();
+  ffDisplay.setPage(STATUS_SCREEN);
+  ffDisplay.drawPage();
+
+  delay(80);
   
 }

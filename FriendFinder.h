@@ -11,6 +11,8 @@
 #include <TFT_eSPI.h>
 #include <Wire.h>
 #include <utility/imumaths.h>
+// Font files are stored in SPIFFS, so load the linbrary
+#include <FS.h>
 
 #include "FFConfig.h"
 //#include "esp_system.h"
@@ -67,13 +69,19 @@ struct friendDB {
 
 // Status
 struct ffStatus {
+  String macAddress;
+  uint8_t ffAddress; // This is the address for the radio/datagram too
+  uint16_t ffColor; // For displays/neopixels
+  uint8_t messageCounter = 0; // total messages recieved from friend
   uint8_t fix_quality;
   float latitude;
   float longitude;
   float orientation_x;
   float orientation_y;
   float orientation_z;
+  float battery_V;
 };
+
 
 class ffRadio : public RH_RF95 {
  private:
@@ -84,24 +92,6 @@ class ffRadio : public RH_RF95 {
   void reset(bool verbose = true);
   // void print(bool verbose);
   // void update(bool verbose);
-};
-
-class ffDisplay : public TFT_eSPI {
- private:
- public:
-  // Constructor
-  ffDisplay();
-
-  // Methods
-  void startup(bool verbose = true);
-  // void drawPage(int page);
-  // void screen_off();
-  // void screen_splash();
-  // void screen_IMU(ffIMU myIMU);
-
-  // Values
-  int page;
-  bool page_change = true;
 };
 
 class ffMessenger : public RHReliableDatagram {
@@ -176,10 +166,91 @@ class ffEntanglement {
 
   // Methods
   void update(ffGPS myGPS, ffMessenger myMessenger, ffIMU myIMU);
-  // void printStatus();
+  void entangle(ffStatus aFriend);
+  void entangle(ffGPS myGPS);
+  void entangle(ffMessenger myMessenger);
+  void entangle(ffIMU myIMU);
+  
+  void printSelfStatus();
+  String getMacAddress();
+  
 
   // Data
-  ffStatus self;
+  ffStatus selfStatus;
+  ffStatus friendStatus[10];
+
+  // Preloaded Data
+  String knownMacAddresses[5] = {"80:7D:3A:F0:E2:E3", "80:7D:3A:F0:E2:E2",
+                                "80:7D:3A:BC:D3:A4", "24:62:AB:CB:17:00",
+                                "80:7D:3A:F0:E2:E4"};
+  uint16_t friendColors[5] = {TFT_RED, TFT_YELLOW, TFT_GREEN, TFT_PURPLE, TFT_BLUE};
+
+};
+
+class ffDisplay : public TFT_eSPI {
+// Fonts
+#define NOTOSANSBOLD15 "NotoSansBold15"
+#define NOTOSANSBOLD36 "NotoSansBold36"
+#define BARCODE20 "LibreBarcode20"
+#define BARCODE15 "LibreBarcode15"
+#define BARCODE36 "LibreBarcode36"
+#define BARCODE72 "LibreBarcode72"
+#define LCARS28 "LCARS28"
+#define LCARS20 "LCARS20"
+
+// Colors
+#define LCARS_ORANGE 0xFCC0
+#define LCARS_PURPLE 0xCB33
+#define LCARS_PINK 0xCCD9
+#define LCARS_YELLOW 0xFE6C
+#define LCARS_RED 0x8902
+#define LCARS_BLUE 0x9CDF
+#define LCARS_PALEBLUE 0x9CD9
+
+
+ private:
+  #define SCREEN_OFF 0
+  #define SPLASH_SCREEN 1
+  #define STATUS_SCREEN 2
+  int page;
+  bool page_change = true;
+  TFT_eSPI tft;
+  // Screen Buffers
+   TFT_eSprite screenBuffer = TFT_eSprite(&tft); 
+   TFT_eSprite statusScreen = TFT_eSprite(&tft); 
+
+  // Sprites
+  TFT_eSprite sprite_IMU = TFT_eSprite(&tft); 
+
+  // Font math
+  int fontHeight;
+  int lineWidth;
+  int characterWidth;
+  
+  void draw_sprite_IMU(); // static elements
+  void update_sprite_IMU(); // dynamic elements
+
+  // Entanglement Pointer
+  ffEntanglement * _myEntanglment;
+ public:
+  // Constructor
+  ffDisplay(ffEntanglement *myEntanglement);
+
+
+
+  // Methods
+  void startup(bool verbose = true);
+  void setPage(int new_page);
+  void getPage(int current_page);
+  void drawPage();
+  void screen_off();
+  void screen_splash();
+  void screen_status();
+  
+
+
+  
+
 };
 
 #endif  // Close Library

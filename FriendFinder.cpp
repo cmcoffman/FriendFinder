@@ -2,7 +2,6 @@
 
 #include <math.h>
 
-// wrapper on Adafruit_GPS constructor
 ffGPS::ffGPS(HardwareSerial* ser) : Adafruit_GPS(ser) {}
 
 void ffGPS::startup(bool verbose) {
@@ -57,7 +56,6 @@ void ffGPS::startup(bool verbose) {
   // Ask for firmware version
   // Serial.println(PMTK_Q_RELEASE);
 }
-
 void ffGPS::update(bool verbose) {
   char c = Adafruit_GPS::read();
 
@@ -90,12 +88,11 @@ void ffGPS::update(bool verbose) {
     }
   } else {
     if (verbose) {
-      // Decided not to print a message if there's nothing.
+      // Decided not to print a message if there's nothing (spammy)
       // Serial.println("*No NMEA*");
     }
   }
 }
-
 void ffGPS::print(bool verbose) {
   Serial.println("***     Parsed GPS Data:     ***");
   if (Adafruit_GPS::fixquality == B0) {  // note use of binary "B0"
@@ -143,10 +140,11 @@ void ffGPS::print(bool verbose) {
   }
 }
 
-// Display Stuff
-//#ifdef FFMK2
-ffDisplay::ffDisplay() : TFT_eSPI() {}
-
+ffDisplay::ffDisplay(ffEntanglement *myEntanglement) : TFT_eSPI() {
+  _myEntanglment = myEntanglement;
+  page = 0;
+  page_change = true;
+}
 void ffDisplay::startup(bool verbose) {
   // Setup Display
   if (verbose) Serial.println("Display Startup...");
@@ -165,103 +163,126 @@ void ffDisplay::startup(bool verbose) {
                              // 4 is USB on bottom
                              // 0 - bottom; 5 - right
   // TFT_eSPI::setCursor(1,1);
+  #define CHECK_FONTS
+  #ifdef CHECK_FONTS
+  if (!SPIFFS.begin())
+  {
+    Serial.println("SPIFFS initialisation failed!");
+    while (1)
+      yield(); // Stay here twiddling thumbs waiting
+  }
+  Serial.println("\r\nSPIFFS available!");
+
+  // ESP32 will crash if any of the fonts are missing
+  bool font_missing = false;
+  if (SPIFFS.exists("/NotoSansBold15.vlw") == false)
+    font_missing = true;
+  if (SPIFFS.exists("/NotoSansBold36.vlw") == false)
+    font_missing = true;
+  if (SPIFFS.exists("/LibreBarcode20.vlw") == false)
+    font_missing = true;
+  if (SPIFFS.exists("/LibreBarcode15.vlw") == false)
+    font_missing = true;
+  if (SPIFFS.exists("/LibreBarcode36.vlw") == false)
+    font_missing = true;
+  if (SPIFFS.exists("/LibreBarcode72.vlw") == false)
+    font_missing = true;
+  if (SPIFFS.exists("/LCARS28.vlw") == false)
+    font_missing = true;
+  if (SPIFFS.exists("/LCARS20.vlw") == false)
+    font_missing = true;
+
+  if (font_missing)
+  {
+    Serial.println("\r\nFont missing in SPIFFS, did you upload it?");
+    while (1)
+      yield();
+  }
+  else
+    Serial.println("\r\nFonts found OK.");
+  #endif
+}
+void ffDisplay::setPage(int new_page) {
+  if (page != new_page) {
+    page = new_page;
+    page_change = true;
+  } else {
+    page_change = false;
+  }
+}
+void ffDisplay::drawPage() {
+  if (page_change) {
+    fillScreen(TFT_BLACK);
+  }
+  if (page != SCREEN_OFF) {
+    digitalWrite(TFT_BL, HIGH);
+  }
+
+#define NUM_PAGES 3
+  switch (page) {
+    case SCREEN_OFF:
+      ffDisplay::screen_off();
+      page_change = false;
+      break;
+    case SPLASH_SCREEN:
+      ffDisplay::screen_splash();
+      page_change = false;
+      break;
+    case STATUS_SCREEN:
+      ffDisplay::screen_status();
+      page_change = false;
+      break;
+      // default:
+      //   ffDisplay::screen_splash();
+      //   page_change = false;
+      //   break;
+  }
+}
+void ffDisplay::screen_off() {
+  fillScreen(TFT_BLACK);
+  digitalWrite(TFT_BL, LOW);
+}
+void ffDisplay::screen_splash() {}
+void ffDisplay::screen_status() {}
+void ffDisplay::draw_sprite_IMU() {
+  tft.loadFont(LCARS28);
+  fontHeight = tft.fontHeight();
+  lineWidth = tft.textWidth("X-999.9");  
+  characterWidth = tft.textWidth("X");  
+
+  //Serial.printf("Font Height: %d px", fontHeight); Serial.println();
+  //Serial.printf("Max Width: %d px", lineWidth); Serial.println();
+  //Serial.printf("Sprite Width: %d px", lineWidth + 2); Serial.println();
+  //Serial.printf("Sprite Height: %d px", (fontHeight * 3)+1); Serial.println();
+  sprite_IMU.createSprite(57, 82);
+  sprite_IMU.loadFont(LCARS28);
+  sprite_IMU.setTextDatum(CR_DATUM);
+  sprite_IMU.setTextColor(LCARS_ORANGE, TFT_BLACK);
+  sprite_IMU.drawString("X", 0 + characterWidth, 0 + (fontHeight * 0) + fontHeight/2);
+  sprite_IMU.drawString("Y", 0 + characterWidth, 0 + (fontHeight * 1) + fontHeight/2);
+  sprite_IMU.drawString("Z", 0 + characterWidth, 0 + (fontHeight * 2) + fontHeight/2);
+}
+void ffDisplay::update_sprite_IMU() {
+  tft.loadFont(LCARS28);
+  fontHeight = tft.fontHeight();
+  lineWidth = tft.textWidth("X-999.9");  
+  characterWidth = tft.textWidth("X");  
+   sprite_IMU.setTextDatum(CR_DATUM);
+  int padding = sprite_IMU.textWidth("-999.9"); 
+  sprite_IMU.setTextPadding(padding);
+  sprite_IMU.setTextColor(LCARS_PALEBLUE, TFT_BLACK);
+
+  
+  //float x = *_myEntanglment->selfStatus.orientation_x;
+  float y = 1.0;
+  float z = 1.0;
+
+  sprite_IMU.drawFloat(*_myEntanglment->selfStatus.orientation_x, 1, 0 + sprite_IMU.textWidth("X-999.0"), 0 + (fontHeight * 0) + fontHeight/2);
+  sprite_IMU.drawFloat(y, 1, 0 + sprite_IMU.textWidth("X-999.0"), 0 + (fontHeight * 1) + fontHeight/2);
+  sprite_IMU.drawFloat(z, 1, 0 + sprite_IMU.textWidth("X-999.0"), 0 + (fontHeight * 2) + fontHeight/2);
 }
 
-// void ffDisplay::drawPage(int page) {
-//   if (page_change) {
-//     fillScreen(TFT_BLACK);
-//   }
-//   if (page != 1) {
-//     digitalWrite(TFT_BL, HIGH);
-//   }
-
-// #define NUM_PAGES 3
-//   switch (page) {
-//     case 1:
-//       ffDisplay::screen_off();
-//       page_change = false;
-//       break;
-//     case 2:
-//       ffDisplay::screen_splash();
-//       page_change = false;
-//       break;
-//     case 3:
-//       ffDisplay::screen_IMU();
-//       page_change = false;
-//       break;
-//     default:
-//       ffDisplay::screen_splash();
-//       page_change = false;
-//       break;
-//   }
-// }
-
-// void ffDisplay::screen_off() {
-//   fillScreen(TFT_BLACK);
-//   digitalWrite(TFT_BL, LOW);
-// }
-
-// void ffDisplay::screen_splash() {
-//   byte font = 1;
-//   setTextFont(font);
-//   setTextSize(3);
-//   // tft.fillScreen(TFT_BLACK);
-//   int padding = textWidth("999", font);  // get the width of the text in pixels
-//   setTextColor(TFT_GREEN, TFT_BLUE);
-//   setTextPadding(padding);
-//   // setTextColor(TFT_BLACK, TFT_RED);
-//   drawCentreString("FriendFinder", TFT_HEIGHT / 2, TFT_WIDTH / 2, 1);
-//   // drawRightString("FriendFinder", 150, 50, 1);
-// }
-
-// void ffDisplay::screen_IMU(ffIMU myIMU) {
-//   int font = 1;
-//   int size = 2;
-//   setTextFont(font);
-//   setTextSize(size);
-//   int fontHeight = fontHeight(font);
-//   int padding = textWidth("999", font);  // get the width of the text in pixels
-//   setTextColor(TFT_BLACK, TFT_LIGHTGREY);
-//   setTextPadding(padding);
-
-//   // Draw the static parts just once
-//   if (page_change) {
-//     // Background
-//     fillScreen(TFT_LIGHTGREY);
-//     // Text Labels
-//     drawString("   ORI", 0, 3 + fontHeight * 0, 1);
-//     drawString("X:", 3, fontHeight * 1, 1);
-//     drawString("Y:", 3, fontHeight * 2, 1);
-//     drawString("Z:", 3, fontHeight * 3, 1);
-//     drawString("Lat:", 3, fontHeight * 4, 1);
-//     drawString("Lon:", 3, fontHeight * 5, 1);
-//   }
-
-//   int x = random(0, 360);
-//   int y = random(0, 360);
-//   int z = random(0, 360);
-
-//   char buf[5];
-//   dtostrf(myIMU.event.orientation.x, 4, 0, buf);
-//   setTextColor(TFT_RED, TFT_LIGHTGREY);
-//   drawRightString(buf, textWidth(buf) + textWidth("X:"), 3 + fontHeight * 1, 1);
-
-//   // char buf[3];
-//   dtostrf(myIMU.event.orientation.y, 4, 0, buf);
-//   setTextColor(TFT_DARKGREEN, TFT_LIGHTGREY);
-//   drawRightString(buf, textWidth(buf) + textWidth("X:"), 3 + fontHeight * 2, 1);
-
-//   // char buf[3];
-//   dtostrf(myIMU.event.orientation.z, 4, 0, buf);
-//   setTextColor(TFT_BLUE, TFT_LIGHTGREY);
-//   drawRightString(buf, textWidth(buf) + textWidth("X:"), 3 + fontHeight * 3, 1);
-// }
-// //#endif
-
-// Radio Stuff
-// wrapper on RH_RF95 constructor
 ffRadio::ffRadio(uint8_t csPin, uint8_t intPin) : RH_RF95(csPin, intPin) {}
-
 void ffRadio::startup(bool verbose) {
   if (verbose) Serial.println("Radio Startup...");
 #ifdef FFMK1
@@ -300,7 +321,6 @@ void ffRadio::startup(bool verbose) {
   RH_RF95::setTxPower(23, false);
   if (verbose) Serial.println("-End Radio Init-");
 }
-
 void ffRadio::reset(bool verbose) {
   if (verbose) Serial.print("Reset Radio...");
   // Manual Reset
@@ -316,13 +336,49 @@ void ffRadio::reset(bool verbose) {
   if (verbose) Serial.println("done!");
 }
 
-// Messaging Stuff
-// wrapper on RHReliableDatagram constructor
+// // Messenger
+// // cribbed from
+// https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
+// convert back to floating point
+// lat1 /= 10000000;
+// lon1 /= 10000000;
+// lat2 /= 10000000;
+// lon2 /= 10000000;
+// distance between latitudes
+// and longitudes
+// Haversine Distance Calculator with Fixed width coords
+// // from: http://forum.arduino.cc/index.php?topic=45760.msg332014#msg332014
+// int ffMessenger::HaverSineFixed(uint32_t lat1, uint32_t lon1, uint32_t lat2,
+//                                 uint32_t lon2) {
+//   float flat1 = lat1 / 10000000;
+//   float flat2 = lat2 / 10000000;
+//   float flon1 = lon1 / 10000000;
+//   float flon2 = lon2 / 10000000;
+//
+//   float ToRad = PI / 180.0;
+//   float R = 63710;  // radius earth in m
+//
+//   float dLat = (lat2 - lat1) * ToRad;
+//   float dLon = (lon2 - lon1) * ToRad;
+//
+//   float a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1 * ToRad) *
+//                                                 cos(lat2 * ToRad) *
+//                                                 sin(dLon / 2) * sin(dLon /
+//                                                 2);
+//
+//   float c = 2 * atan2(sqrt(a), sqrt(1 - a));
+//
+//   float d = ((R * c) * 8) / 1000;  // convert to meters
+//   int distance = d;
+//   return distance;
+// }
+// // Gotten from:
+// https://gis.stackexchange.com/questions/252672/calculate-bearing-between-two-decimal-gps-coordinates-arduino-c?newreg=eb676d9dca8f4cc8ad10c14a3b00d423
+
 ffMessenger::ffMessenger(RHGenericDriver& driver, uint8_t thisAddress)
     : RHReliableDatagram(driver, thisAddress) {
   lastFrom = 4;
 }
-
 void ffMessenger::startup(bool verbose) {
   if (verbose) Serial.println("Messenger Startup...");
 
@@ -340,7 +396,6 @@ void ffMessenger::startup(bool verbose) {
   if (RHReliableDatagram::init() && verbose)
     Serial.println("Messenger Init - OK");
 }
-
 void ffMessenger::printPacket(dataPacket packet) {
   Serial.println("Packet Contents:");
   Serial.print("Latitude (fixed width): ");
@@ -357,7 +412,6 @@ void ffMessenger::printPacket(dataPacket packet) {
   Serial.print("HDOP: ");
   Serial.println(HDOP);
 }
-
 void ffMessenger::check(bool verbose) {
   // record time this check was made
   time_of_last_check = millis();
@@ -399,9 +453,6 @@ void ffMessenger::check(bool verbose) {
   }
   time_since_last_msg = millis() - time_of_last_msg;
 }
-
-// This should build the outPacket (with my status)
-// and updates the friendDB with distances and headings
 void ffMessenger::update(bool verbose, ffGPS myGPS) {
   // Update my location
   if (myGPS.fixquality == B0) {
@@ -483,13 +534,7 @@ void ffMessenger::update(bool verbose, ffGPS myGPS) {
     }
   }
 }
-
 void ffMessenger::send(bool verbose, uint8_t to) {
-  // just broadcast
-  // to = 255;
-  // Serial.println("copying data to outbuffer..");
-  // memcpy(&inPacket, inBuf, sizeof(inPacket));
-  // memcpy(&outBuf, &outPacket, sizeof(outPacket));
   if (verbose) {
     Serial.print("Sending to : 0x");
     Serial.print(to, HEX);
@@ -515,33 +560,8 @@ void ffMessenger::send(bool verbose, uint8_t to) {
       Serial.println("Messenger Send: Message Broadcast, no ack expected.");
   }
 }
-
-// float ffMessenger::calcDistance(uint32_t my_lat, uint32_t my_long,
-//                                 uint32_t their_lat, uint32_t their_long) {
-//   // float TinyGPS::distance_between (float lat1, float long1, float lat2,
-//   float
-//   // long2)
-//   // returns value in meters
-//   my_lat /= 10000000;
-//   my_long /= 10000000;
-//   their_lat /= 10000000;
-//   their_long /= 10000000;
-//   float distance =
-//       TinyGPS::distance_between(my_lat, my_long, their_lat, their_long);
-//   return distance;
-// }
-
 uint32_t ffMessenger::haversine(float lat1, float lon1, float lat2,
                                 float lon2) {
-  // cribbed from
-  // https://www.geeksforgeeks.org/haversine-formula-to-find-distance-between-two-points-on-a-sphere/
-  // convert back to floating point
-  // lat1 /= 10000000;
-  // lon1 /= 10000000;
-  // lat2 /= 10000000;
-  // lon2 /= 10000000;
-  // distance between latitudes
-  // and longitudes
   double dLat = (lat2 - lat1) * M_PI / 180.0;
   double dLon = (lon2 - lon1) * M_PI / 180.0;
 
@@ -557,38 +577,7 @@ uint32_t ffMessenger::haversine(float lat1, float lon1, float lat2,
   uint32_t int_meters = round(rad * c * 1000);
   return int_meters;
 }
-
-// // Haversine Distance Calculator with Fixed width coords
-// // from: http://forum.arduino.cc/index.php?topic=45760.msg332014#msg332014
-// int ffMessenger::HaverSineFixed(uint32_t lat1, uint32_t lon1, uint32_t lat2,
-//                                 uint32_t lon2) {
-//   float flat1 = lat1 / 10000000;
-//   float flat2 = lat2 / 10000000;
-//   float flon1 = lon1 / 10000000;
-//   float flon2 = lon2 / 10000000;
-
-//   float ToRad = PI / 180.0;
-//   float R = 63710;  // radius earth in m
-
-//   float dLat = (lat2 - lat1) * ToRad;
-//   float dLon = (lon2 - lon1) * ToRad;
-
-//   float a = sin(dLat / 2) * sin(dLat / 2) + cos(lat1 * ToRad) *
-//                                                 cos(lat2 * ToRad) *
-//                                                 sin(dLon / 2) * sin(dLon /
-//                                                 2);
-
-//   float c = 2 * atan2(sqrt(a), sqrt(1 - a));
-
-//   float d = ((R * c) * 8) / 1000;  // convert to meters
-//   int distance = d;
-//   return distance;
-// }
-
 int ffMessenger::bearing(float lat1, float lon1, float lat2, float lon2) {
-  // Gotten from:
-  // https://gis.stackexchange.com/questions/252672/calculate-bearing-between-two-decimal-gps-coordinates-arduino-c?newreg=eb676d9dca8f4cc8ad10c14a3b00d423
-
   float teta1 = radians(lat1);
   float teta2 = radians(lat2);
   float delta1 = radians(lat2 - lat1);
@@ -601,13 +590,8 @@ int ffMessenger::bearing(float lat1, float lon1, float lat2, float lon2) {
   float brng = atan2(y, x);
   brng = degrees(brng);  // radians to degrees
   brng = (((int)brng + 360) % 360);
-
-  // Serial.print("Heading GPS: ");
-  // Serial.println(brng);
-
   return brng;
 }
-
 int dumbDistance(uint32_t lat1, uint32_t lon1, uint32_t lat2, uint32_t lon2) {
   uint32_t dLonSq = (lon2 - lon1) ^ 2;
   uint32_t dLatSq = (lat2 - lat1) ^ 2;
@@ -617,10 +601,8 @@ int dumbDistance(uint32_t lat1, uint32_t lon1, uint32_t lat2, uint32_t lon2) {
   return d;
 }
 
-// Compass Stuff
-// wrapper on Adafruit_Sensor constructor
+// IMU
 ffIMU::ffIMU() : Adafruit_BNO055(55) { system = gyro = accel = mag = 0; }
-
 void ffIMU::startup(bool verbose) {
   if (verbose) Serial.println("IMU Startup...");
 
@@ -639,7 +621,6 @@ void ffIMU::startup(bool verbose) {
   }
   if (verbose) Serial.println("-End IMU Init-");
 }
-
 void ffIMU::displaySensorDetails() {
   sensor_t sensor;
   Adafruit_BNO055::getSensor(&sensor);
@@ -663,7 +644,6 @@ void ffIMU::displaySensorDetails() {
   Serial.println("");
   delay(500);
 }
-
 void ffIMU::displaySensorStatus() {
   /* Get the system status values (mostly for debugging purposes) */
   uint8_t system_status, self_test_results, system_error;
@@ -682,7 +662,6 @@ void ffIMU::displaySensorStatus() {
   Serial.println("");
   delay(500);
 }
-
 void ffIMU::displayCalStatus() {
   /* Get the four calibration values (0..3) */
   /* Any sensor data reporting 0 should be ignored, */
@@ -707,7 +686,6 @@ void ffIMU::displayCalStatus() {
   Serial.print(" M:");
   Serial.print(mag, DEC);
 }
-
 void ffIMU::update(bool verbose) {
   Adafruit_BNO055::getEvent(&event);
   Adafruit_BNO055::getCalibration(&system, &gyro, &accel, &mag);
@@ -724,38 +702,100 @@ void ffIMU::update(bool verbose) {
 }
 
 ffEntanglement::ffEntanglement(ffGPS myGPS, ffMessenger myMessenger,
-                               ffIMU myIMU) {}
+                               ffIMU myIMU) {
+  // Get my MAC Address
+  selfStatus.macAddress = getMacAddress();
+  // Look for this in the known addresses and set color and ffAddress
+  for (size_t i = 0;
+       i < (sizeof(knownMacAddresses) / sizeof(knownMacAddresses[0])); i++) {
+    if (knownMacAddresses[i] == selfStatus.macAddress) {
+      selfStatus.ffAddress = i;
+      selfStatus.ffColor = friendColors[i];
+      break;
+    }
+  }
 
-void ffEntanglement::update(ffGPS myGPS,
-                            ffMessenger myMessenger,
-                            ffIMU myIMU) {
-
-  self.fix_quality = myGPS.fixquality;
-  
+  // Load in the other known friends
+  for (size_t i = 0;
+       i < (sizeof(knownMacAddresses) / sizeof(knownMacAddresses[0])); i++) {
+    friendStatus[i].macAddress = knownMacAddresses[i];
+    friendStatus[i].ffColor = friendColors[i];
+  }
+}
+void ffEntanglement::entangle(ffStatus aFriend) {}
+void ffEntanglement::entangle(ffGPS myGPS) {
+  // Get Current GPS Data
+  selfStatus.fix_quality = myGPS.fixquality;
   if (myGPS.fixquality == B0) {
-    self.fix_quality = 0;
-   // if (verbose) Serial.println("Entanglement: No GPS Fix");
+    selfStatus.fix_quality = 0;
+    // if (verbose) Serial.println("Entanglement: No GPS Fix");
   }
   if (myGPS.fixquality > B0) {
     //   char lat;                 ///< N/S
     // char lon;                 ///< E/W
 
     if (myGPS.lat == 'N') {
-      self.latitude = myGPS.latitude_fixed;
+      selfStatus.latitude = myGPS.latitude_fixed;
     }
     if (myGPS.lat == 'S') {
-      self.latitude = myGPS.latitude_fixed * -1;
+      selfStatus.latitude = myGPS.latitude_fixed * -1;
     }
     if (myGPS.lon == 'E') {
-      self.longitude = myGPS.longitude_fixed;
+      selfStatus.longitude = myGPS.longitude_fixed;
     }
     if (myGPS.lon == 'W') {
-      self.longitude = myGPS.longitude_fixed * -1;
+      selfStatus.longitude = myGPS.longitude_fixed * -1;
     }
   }
-  self.orientation_x = myIMU.event.orientation.x;
-  self.orientation_y = myIMU.event.orientation.y;
-  self.orientation_z = myIMU.event.orientation.z;
+}
+void ffEntanglement::entangle(ffMessenger myMessenger) {}
+void ffEntanglement::entangle(ffIMU myIMU) {
+  // Get Current IMU Data
+  selfStatus.orientation_x = myIMU.event.orientation.x;
+  selfStatus.orientation_y = myIMU.event.orientation.y;
+  selfStatus.orientation_z = myIMU.event.orientation.z;
+}
+void ffEntanglement::update(ffGPS myGPS, ffMessenger myMessenger, ffIMU myIMU) {
+  entangle(myIMU);
+  entangle(myGPS);
+  entangle(myMessenger);
+}
+String ffEntanglement::getMacAddress() {
+  uint8_t baseMac[6];
+  // Get MAC address for WiFi station
+  esp_read_mac(baseMac, ESP_MAC_WIFI_STA);
+  char baseMacChr[18] = {0};
+  sprintf(baseMacChr, "%02X:%02X:%02X:%02X:%02X:%02X", baseMac[0], baseMac[1],
+          baseMac[2], baseMac[3], baseMac[4], baseMac[5]);
+  Serial.print("My MAC Address: ");
+  Serial.println(String(baseMacChr));
+  return String(baseMacChr);
+}
+void ffEntanglement::printSelfStatus() {
+  Serial.println("====Self Status====");
+  Serial.print("MAC Address: ");
+  Serial.println(selfStatus.macAddress);
+  Serial.print("ffAddress: ");
+  Serial.println(selfStatus.ffAddress);
+  Serial.print("ffColor: ");
+  Serial.println(selfStatus.ffColor);
+  Serial.print("messageCounter: ");
+  Serial.println(selfStatus.messageCounter);
+  Serial.print("fix_quality: ");
+  Serial.println(selfStatus.fix_quality);
+  Serial.print("latitude: ");
+  Serial.println(selfStatus.latitude);
+  Serial.print("longitude: ");
+  Serial.println(selfStatus.longitude);
+  Serial.print("orientation_x: ");
+  Serial.println(selfStatus.orientation_x);
+  Serial.print("orientation_y: ");
+  Serial.println(selfStatus.orientation_y);
+  Serial.print("orientation_z: ");
+  Serial.println(selfStatus.orientation_z);
+  Serial.print("battery_V: ");
+  Serial.println(selfStatus.battery_V);
+  Serial.println("===================");
 }
 
 // // Buttons to work on
