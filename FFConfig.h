@@ -4,7 +4,8 @@
 #include "FriendFinder.h"
 
 // Select ONE of the following devices
-#include "hardware_setups/FFMK2.h"  // TTGO T-Display
+#include "hardware_setups/FFMK3.h"  // prototype on breadboard
+//#include "hardware_setups/FFMK2.h"  // TTGO T-Display
 // #include "hardware_setups/FFMK1.h"  // Setup file for mk1 prototype
 // (protoboard) #include <hardware_setups/M0_express.h> #include
 // <hardware_setups/Feather_32u4.h>

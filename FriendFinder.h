@@ -1,9 +1,9 @@
 #ifndef _FRIENDFINDER_
 #define _FRIENDFINDER_
-
 #include <Adafruit_BNO055.h>
 #include <Adafruit_GPS.h>
 #include <Adafruit_Sensor.h>
+#include <Arduino.h>
 #include <Button2.h>
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
@@ -21,10 +21,10 @@ class ffGPS : public Adafruit_GPS {
  private:
  public:
   // Constructor
-  ffGPS(HardwareSerial* ser);
+  ffGPS(HardwareSerial *ser);
 
   // GPS Functions
-  void startup(bool verbose = true);
+  bool startup(bool verbose = true);
   void print(bool verbose = true);
   void update(bool verbose = true);
   /*/
@@ -70,9 +70,9 @@ struct friendDB {
 // Status
 struct ffStatus {
   String macAddress;
-  uint8_t ffAddress; // This is the address for the radio/datagram too
-  uint16_t ffColor; // For displays/neopixels
-  uint8_t messageCounter = 0; // total messages recieved from friend
+  uint8_t ffAddress;           // This is the address for the radio/datagram too
+  uint16_t ffColor;            // For displays/neopixels
+  uint8_t messageCounter = 0;  // total messages recieved from friend
   uint8_t fix_quality;
   float latitude;
   float longitude;
@@ -81,7 +81,6 @@ struct ffStatus {
   float orientation_z;
   float battery_V;
 };
-
 
 class ffRadio : public RH_RF95 {
  private:
@@ -98,7 +97,7 @@ class ffMessenger : public RHReliableDatagram {
  private:
  public:
   // Constructor
-  ffMessenger(RHGenericDriver& driver, uint8_t thisAddress);
+  ffMessenger(RHGenericDriver &driver, uint8_t thisAddress);
 
   // Methods
   void startup(bool verbose = true);
@@ -170,10 +169,9 @@ class ffEntanglement {
   void entangle(ffGPS myGPS);
   void entangle(ffMessenger myMessenger);
   void entangle(ffIMU myIMU);
-  
+
   void printSelfStatus();
   String getMacAddress();
-  
 
   // Data
   ffStatus selfStatus;
@@ -181,10 +179,10 @@ class ffEntanglement {
 
   // Preloaded Data
   String knownMacAddresses[5] = {"80:7D:3A:F0:E2:E3", "80:7D:3A:F0:E2:E2",
-                                "80:7D:3A:BC:D3:A4", "24:62:AB:CB:17:00",
-                                "80:7D:3A:F0:E2:E4"};
-  uint16_t friendColors[5] = {TFT_RED, TFT_YELLOW, TFT_GREEN, TFT_PURPLE, TFT_BLUE};
-
+                                 "80:7D:3A:BC:D3:A4", "24:62:AB:CB:17:00",
+                                 "80:7D:3A:F0:E2:E4"};
+  uint16_t friendColors[5] = {TFT_RED, TFT_YELLOW, TFT_GREEN, TFT_PURPLE,
+                              TFT_BLUE};
 };
 
 class ffDisplay : public TFT_eSPI {
@@ -207,36 +205,42 @@ class ffDisplay : public TFT_eSPI {
 #define LCARS_BLUE 0x9CDF
 #define LCARS_PALEBLUE 0x9CD9
 
-
  private:
-  #define SCREEN_OFF 0
-  #define SPLASH_SCREEN 1
-  #define STATUS_SCREEN 2
+#define SCREEN_OFF 0
+#define SPLASH_SCREEN 1
+#define STATUS_SCREEN 2
+#define TERMINAL_SCREEN 3
   int page;
   bool page_change = true;
-  TFT_eSPI tft;
+  
+  //nTFT_eSPI tft;
+
+  TFT_eSPI tft = TFT_eSPI();
+
   // Screen Buffers
-   TFT_eSprite screenBuffer = TFT_eSprite(&tft); 
-   TFT_eSprite statusScreen = TFT_eSprite(&tft); 
+  TFT_eSprite screenBuffer = TFT_eSprite(&tft);
+  TFT_eSprite statusScreen = TFT_eSprite(&tft);
 
   // Sprites
-  TFT_eSprite sprite_IMU = TFT_eSprite(&tft); 
+  TFT_eSprite sprite_IMU = TFT_eSprite(&tft);
 
   // Font math
   int fontHeight;
   int lineWidth;
   int characterWidth;
-  
-  void draw_sprite_IMU(); // static elements
-  void update_sprite_IMU(); // dynamic elements
+
+  void draw_sprite_IMU();    // static elements
+  void update_sprite_IMU();  // dynamic elements
 
   // Entanglement Pointer
-  ffEntanglement * _myEntanglment;
+  ffEntanglement *_myEntanglment;
+
  public:
   // Constructor
   ffDisplay(ffEntanglement *myEntanglement);
 
-
+  // Screen Buffers
+  TFT_eSprite terminalScreen = TFT_eSprite(&tft);
 
   // Methods
   void startup(bool verbose = true);
@@ -246,11 +250,6 @@ class ffDisplay : public TFT_eSPI {
   void screen_off();
   void screen_splash();
   void screen_status();
-  
-
-
-  
-
 };
 
 #endif  // Close Library

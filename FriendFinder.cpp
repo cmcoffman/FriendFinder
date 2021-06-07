@@ -1,22 +1,31 @@
 #include "FriendFinder.h"
-
 #include <math.h>
 
+#pragma region ffGPS
 ffGPS::ffGPS(HardwareSerial* ser) : Adafruit_GPS(ser) {}
 
-void ffGPS::startup(bool verbose) {
-  if (verbose) Serial.println("GPS Startup...");
+bool ffGPS::startup(bool verbose) {
+  bool output;
+  
+  if (verbose) Serial.print("GPS Startup....");
+
 #ifdef FFMK2
   GPSSerial.begin(9600, SERIAL_8N1, GPSRX, GPSTX);
 
-  // if(!GPSSerial.begin(9600, SERIAL_8N1, GPSRX, GPSTX)) {
-  //   Serial.println("GPS - FAIL");
-  // } else {
-  //   Serial.println("GPS - OK");
-  // }
+  if(!GPSSerial.begin(9600, SERIAL_8N1, GPSRX, GPSTX)) {
+    Serial.println("GPS - FAIL");
+  } else {
+    Serial.println("GPS - OK");
+  }
 
 #else
-  Adafruit_GPS::begin(9600);
+  if(Adafruit_GPS::begin(9600)) {
+    output = true;
+    if (verbose) Serial.println("OK");
+  } else {
+    output = false;
+    if (verbose) Serial.println("FAIL");
+  };
 #endif
 
   // turn on only GPRMC sentence
@@ -55,6 +64,7 @@ void ffGPS::startup(bool verbose) {
 
   // Ask for firmware version
   // Serial.println(PMTK_Q_RELEASE);
+  return output;
 }
 void ffGPS::update(bool verbose) {
   char c = Adafruit_GPS::read();
@@ -139,30 +149,60 @@ void ffGPS::print(bool verbose) {
     Serial.println(Adafruit_GPS::geoidheight);
   }
 }
+#pragma endregion
 
+#pragma region ffDisplay
 ffDisplay::ffDisplay(ffEntanglement *myEntanglement) : TFT_eSPI() {
   _myEntanglment = myEntanglement;
   page = 0;
   page_change = true;
+
+    // // Setup Screens/Sprites
+// Create a sprite for the scrolling numbers
+  //terminalScreen.setColorDepth(8);
+  terminalScreen.createSprite(240, 135);
+  terminalScreen.fillSprite(TFT_BLUE);                                      // Fill sprite with blue
+  //terminalScreen.setScrollRect(0, 0, 240, 135, TFT_RED); // here we set scroll gap fill color to blue
+  //terminalScreen.setScrollRect(0, terminalScreen.fontHeight(), 240, 135); // here we set scroll gap fill color to blue
+  terminalScreen.setTextColor(TFT_WHITE);                                   // White text, no background
+  //terminalScreen.setTextDatum(TL_DATUM);                                    // Bottom right coordinate datum
+  terminalScreen.setTextFont(2);
+  
+  //terminalScreen.setCursor(0, 135 - terminalScreen.fontHeight());
+  terminalScreen.setCursor(0, 0);
 }
+
+
 void ffDisplay::startup(bool verbose) {
   // Setup Display
+  pinMode(TFT_BL, OUTPUT);
   if (verbose) Serial.println("Display Startup...");
-  ffDisplay::fillScreen(TFT_BLACK);
   TFT_eSPI::init();
-  ffDisplay::fillScreen(TFT_PINK);
+  ffDisplay::fillScreen(TFT_BLACK);
+  
+  
+  ffDisplay::fillScreen(TFT_RED);
   delay(100);
-  TFT_eSPI::fillScreen(TFT_YELLOW);
+  ffDisplay::fillScreen(TFT_ORANGE);
   delay(100);
-  TFT_eSPI::fillScreen(TFT_LIGHTGREY);
+  ffDisplay::fillScreen(TFT_YELLOW);
   delay(100);
-  TFT_eSPI::fillScreen(TFT_BLACK);
-  TFT_eSPI::setRotation(1);  // 1 is USB on right
+  ffDisplay::fillScreen(TFT_GREEN);
+  delay(100);
+  ffDisplay::fillScreen(TFT_BLUE);
+  delay(100);
+  ffDisplay::fillScreen(TFT_NAVY);
+  delay(100);
+  ffDisplay::fillScreen(TFT_VIOLET);
+  delay(100);
+  ffDisplay::fillScreen(TFT_BLACK);
+
+  ffDisplay::setRotation(1);  // 1 is USB on right
                              // 2 is USB on top
                              // 3 is USB on left
                              // 4 is USB on bottom
                              // 0 - bottom; 5 - right
-  // TFT_eSPI::setCursor(1,1);
+  // ffDisplay::setCursor(1,1);
   #define CHECK_FONTS
   #ifdef CHECK_FONTS
   if (!SPIFFS.begin())
@@ -201,6 +241,10 @@ void ffDisplay::startup(bool verbose) {
   else
     Serial.println("\r\nFonts found OK.");
   #endif
+
+
+  
+  
 }
 void ffDisplay::setPage(int new_page) {
   if (page != new_page) {
@@ -218,7 +262,7 @@ void ffDisplay::drawPage() {
     digitalWrite(TFT_BL, HIGH);
   }
 
-#define NUM_PAGES 3
+#define NUM_PAGES 4
   switch (page) {
     case SCREEN_OFF:
       ffDisplay::screen_off();
@@ -236,6 +280,10 @@ void ffDisplay::drawPage() {
       //   ffDisplay::screen_splash();
       //   page_change = false;
       //   break;
+    // case TERMINAL_SCREEN:
+    //   // ffDisplay::terminal();
+    //   // page_change = false;
+    //   // break;
   }
 }
 void ffDisplay::screen_off() {
@@ -277,11 +325,13 @@ void ffDisplay::update_sprite_IMU() {
   float y = 1.0;
   float z = 1.0;
 
-  sprite_IMU.drawFloat(*_myEntanglment->selfStatus.orientation_x, 1, 0 + sprite_IMU.textWidth("X-999.0"), 0 + (fontHeight * 0) + fontHeight/2);
-  sprite_IMU.drawFloat(y, 1, 0 + sprite_IMU.textWidth("X-999.0"), 0 + (fontHeight * 1) + fontHeight/2);
-  sprite_IMU.drawFloat(z, 1, 0 + sprite_IMU.textWidth("X-999.0"), 0 + (fontHeight * 2) + fontHeight/2);
+  // sprite_IMU.drawFloat(*_myEntanglment->selfStatus.orientation_x, 1, 0 + sprite_IMU.textWidth("X-999.0"), 0 + (fontHeight * 0) + fontHeight/2);
+  // sprite_IMU.drawFloat(y, 1, 0 + sprite_IMU.textWidth("X-999.0"), 0 + (fontHeight * 1) + fontHeight/2);
+  // sprite_IMU.drawFloat(z, 1, 0 + sprite_IMU.textWidth("X-999.0"), 0 + (fontHeight * 2) + fontHeight/2);
 }
+#pragma endregion
 
+#pragma region ffRadio
 ffRadio::ffRadio(uint8_t csPin, uint8_t intPin) : RH_RF95(csPin, intPin) {}
 void ffRadio::startup(bool verbose) {
   if (verbose) Serial.println("Radio Startup...");
@@ -374,7 +424,9 @@ void ffRadio::reset(bool verbose) {
 // }
 // // Gotten from:
 // https://gis.stackexchange.com/questions/252672/calculate-bearing-between-two-decimal-gps-coordinates-arduino-c?newreg=eb676d9dca8f4cc8ad10c14a3b00d423
+#pragma endregion
 
+#pragma region ffMessenger
 ffMessenger::ffMessenger(RHGenericDriver& driver, uint8_t thisAddress)
     : RHReliableDatagram(driver, thisAddress) {
   lastFrom = 4;
@@ -592,15 +644,18 @@ int ffMessenger::bearing(float lat1, float lon1, float lat2, float lon2) {
   brng = (((int)brng + 360) % 360);
   return brng;
 }
-int dumbDistance(uint32_t lat1, uint32_t lon1, uint32_t lat2, uint32_t lon2) {
-  uint32_t dLonSq = (lon2 - lon1) ^ 2;
-  uint32_t dLatSq = (lat2 - lat1) ^ 2;
-  uint32_t dSum = dLonSq + dLatSq;
-  long d = sqrt(dSum);
-  d = (d * 0.08);
-  return d;
-}
+// int dumbDistance(uint32_t lat1, uint32_t lon1, uint32_t lat2, uint32_t lon2) {
+//   uint32_t dLonSq = (lon2 - lon1) ^ 2;
+//   uint32_t dLatSq = (lat2 - lat1) ^ 2;
+//   uint32_t dSum = dLonSq + dLatSq;
+//   long d = sqrt(dSum);
+//   d = (d * 0.08);
+//   return d;
+// }
 
+#pragma endregion
+
+#pragma region ffIMU
 // IMU
 ffIMU::ffIMU() : Adafruit_BNO055(55) { system = gyro = accel = mag = 0; }
 void ffIMU::startup(bool verbose) {
@@ -700,7 +755,9 @@ void ffIMU::update(bool verbose) {
     Serial.println(event.orientation.z, 4);
   }
 }
+#pragma endregion
 
+#pragma region ffEntanglement
 ffEntanglement::ffEntanglement(ffGPS myGPS, ffMessenger myMessenger,
                                ffIMU myIMU) {
   // Get my MAC Address
@@ -797,26 +854,4 @@ void ffEntanglement::printSelfStatus() {
   Serial.println(selfStatus.battery_V);
   Serial.println("===================");
 }
-
-// // Buttons to work on
-// #ifdef FFMK2
-// ffButton::ffButton() : Button2() {}
-
-// void ffIMU::startup(bool verbose) {
-//   if (verbose) Serial.println("IMU Startup...");
-
-//   /* Initialise the sensor */
-//   bool init = Adafruit_BNO055::begin();
-//   Adafruit_BNO055::setExtCrystalUse(true);
-//   if (!init && verbose) Serial.println("IMU Init - FAIL");
-//   if (init && verbose) {
-//     Serial.println("IMU Init - OK");
-
-//     /* Display some basic information on this sensor */
-//     ffIMU::displaySensorDetails();
-
-//     /* Optional: Display current status */
-//     ffIMU::displaySensorStatus();
-//   }
-//   if (verbose) Serial.println("-End IMU Init-");
-// }
+#pragma endregion

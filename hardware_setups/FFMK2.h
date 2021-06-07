@@ -7,6 +7,8 @@
 
 // Display Stuff-----
 //TFT_eSPI tft = TFT_eSPI();  // x = 135, y = 240
+#define TFT_BL 25 // "A1"
+
 
 // GPS Stuff-----
 #define GPSSerial Serial2
