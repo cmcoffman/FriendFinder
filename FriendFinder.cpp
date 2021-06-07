@@ -157,19 +157,7 @@ ffDisplay::ffDisplay(ffEntanglement *myEntanglement) : TFT_eSPI() {
   page = 0;
   page_change = true;
 
-    // // Setup Screens/Sprites
-// Create a sprite for the scrolling numbers
-  //terminalScreen.setColorDepth(8);
-  terminalScreen.createSprite(240, 135);
-  terminalScreen.fillSprite(TFT_BLUE);                                      // Fill sprite with blue
-  //terminalScreen.setScrollRect(0, 0, 240, 135, TFT_RED); // here we set scroll gap fill color to blue
-  //terminalScreen.setScrollRect(0, terminalScreen.fontHeight(), 240, 135); // here we set scroll gap fill color to blue
-  terminalScreen.setTextColor(TFT_WHITE);                                   // White text, no background
-  //terminalScreen.setTextDatum(TL_DATUM);                                    // Bottom right coordinate datum
-  terminalScreen.setTextFont(2);
-  
-  //terminalScreen.setCursor(0, 135 - terminalScreen.fontHeight());
-  terminalScreen.setCursor(0, 0);
+   
 }
 
 
@@ -177,7 +165,7 @@ void ffDisplay::startup(bool verbose) {
   // Setup Display
   pinMode(TFT_BL, OUTPUT);
   if (verbose) Serial.println("Display Startup...");
-  TFT_eSPI::init();
+  ffDisplay::init();
   ffDisplay::fillScreen(TFT_BLACK);
   
   
@@ -203,6 +191,22 @@ void ffDisplay::startup(bool verbose) {
                              // 4 is USB on bottom
                              // 0 - bottom; 5 - right
   // ffDisplay::setCursor(1,1);
+
+   // // Setup Screens/Sprites
+// Create a sprite for the scrolling numbers
+  //terminalScreen.setColorDepth(8);
+  terminalScreen.setRotation(1);
+  terminalScreen.createSprite(135, 240);
+  terminalScreen.fillSprite(TFT_BLUE);                                      // Fill sprite with blue
+  //terminalScreen.setScrollRect(0, 0, 240, 135, TFT_RED); // here we set scroll gap fill color to blue
+  //terminalScreen.setScrollRect(0, terminalScreen.fontHeight(), 240, 135); // here we set scroll gap fill color to blue
+  terminalScreen.setTextColor(TFT_WHITE);                                   // White text, no background
+  //terminalScreen.setTextDatum(TL_DATUM);                                    // Bottom right coordinate datum
+  terminalScreen.setTextFont(2);
+  
+  //terminalScreen.setCursor(0, 135 - terminalScreen.fontHeight());
+  terminalScreen.setCursor(0, 0);
+
   #define CHECK_FONTS
   #ifdef CHECK_FONTS
   if (!SPIFFS.begin())

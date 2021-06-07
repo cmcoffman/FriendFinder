@@ -24,7 +24,7 @@ const char *ssid = "***REMOVED***";
 const char *password = "***REMOVED***";
 
 void setup() {
-  //delay(1000);
+  // delay(1000);
   Serial.begin(115200);
   Serial.println(">>> FF STARTUP ./././ ... ");
 
@@ -74,95 +74,17 @@ void setup() {
   Serial.println(WiFi.localIP());
 #pragma endregion
 
-  // delay(1000);
-  Serial.println("no messenger.startup()");
-  Serial.println("Display Only?");
-  // radio.reset(true);
-
   ffDisplay.startup(true);
 
-  // Display a simple splash screen
-  // ffDisplay.fillScreen(TFT_BLACK);
-  // ffDisplay.setTextSize(2);
-  // ffDisplay.setTextColor(LCARS_ORANGE);
-  // ffDisplay.setCursor(40, 5);
-  // ffDisplay.print(F("Friend"));
-  // delay(250);
-  // ffDisplay.print(F("Finder"));
-  // delay(250);
-  // ffDisplay.setCursor(35, 25);
-  // ffDisplay.println(F("MK3"));
-  // delay(750);
-  // ffDisplay.fillScreen(TFT_BLACK);
-
-  // messenger.startup(true);
-
-  // messenger.setTimeout(400);
-  // messenger.setRetries(0);
-  // radio.setFrequency(RF95_FREQ);
-  // radio.setTxPower(23, false);
-
-  // messenger.setThisAddress(3);
-
-  //ffDisplay.print(F("Friend"));
-//  ffDisplay.terminalScreen.setCursor(40, 5);
-  //ffDisplay.terminalScreen.setTextSize(2);
   ffDisplay.terminalScreen.print(F("GPS ///"));
   if (GPS.startup()) {
     ffDisplay.terminalScreen.println(F("[OK]"));
   } else {
     ffDisplay.terminalScreen.println(F("[FAIL]"));
   }
-  ffDisplay.terminalScreen.pushSprite(60, 48);
-
-// ffDisplay.print(F("GPS ///"));
-//   if (GPS.startup()) {
-//     ffDisplay.println(F("[OK]"));
-//   } else {
-//     ffDisplay.println(F("[FAIL]"));
-//   }
-
-// ffDisplay.terminalScreen.scroll(0, + ffDisplay.terminalScreen.fontHeight()); 
-// delay(1000);
-// ffDisplay.terminalScreen.pushSprite(120, 48);
-
-// ffDisplay.terminalScreen.scroll(0, + ffDisplay.terminalScreen.fontHeight()); 
-// delay(1000);
-// ffDisplay.terminalScreen.pushSprite(120, 48);
-
-Serial.print("Font height:");
-Serial.println(ffDisplay.terminalScreen.fontHeight());
-
-  // ffDisplay.setTextSize(2);
-  //   ffDisplay.setCursor(40, 5);
-  // ffDisplay.print(F("Friend"));
-
-  ffIMU.startup(false);
-  Serial.println("... // Startup..[COMPLETE!]");
-
-  // ffDisplay.setPage(SCREEN_OFF);
-  // delay(500);
-  // ffDisplay.setPage(2);
-  // ffDisplay.screen_off();
+  ffDisplay.terminalScreen.pushSprite(0, 0);
 }
 
 unsigned long GPS_previousMillis;
 
-void loop() {
-  ArduinoOTA.handle();
-  GPS.update(true);
-  //GPS.print();
-  // messenger.check();
-  // messenger.update(false, GPS);
-  ffIMU.update(false);
-
-  // messenger.send(true, 255);
-  entanglement.entangle(ffIMU);
-  // entanglement.entangle(ffGPS);
-  // entanglement.entangle(ffIMU);
-  // entanglement.printSelfStatus();
-  // ffDisplay.setPage(STATUS_SCREEN);
-  // ffDisplay.drawPage();
-
-  delay(80);
-}
+void loop() { ArduinoOTA.handle(); }

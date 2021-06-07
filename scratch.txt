@@ -1,3 +1,36 @@
+  //ffDisplay.print(F("Friend"));
+//  ffDisplay.terminalScreen.setCursor(40, 5);
+  //ffDisplay.terminalScreen.setTextSize(2);
+  ffDisplay.terminalScreen.print(F("GPS ///"));
+  if (GPS.startup()) {
+    ffDisplay.terminalScreen.println(F("[OK]"));
+  } else {
+    ffDisplay.terminalScreen.println(F("[FAIL]"));
+  }
+  ffDisplay.terminalScreen.pushSprite(0, 0);
+
+// ffDisplay.print(F("GPS ///"));
+//   if (GPS.startup()) {
+//     ffDisplay.println(F("[OK]"));
+//   } else {
+//     ffDisplay.println(F("[FAIL]"));
+//   }
+
+// ffDisplay.terminalScreen.scroll(0, + ffDisplay.terminalScreen.fontHeight()); 
+// delay(1000);
+// ffDisplay.terminalScreen.pushSprite(120, 48);
+
+// ffDisplay.terminalScreen.scroll(0, + ffDisplay.terminalScreen.fontHeight()); 
+// delay(1000);
+// ffDisplay.terminalScreen.pushSprite(120, 48);
+
+Serial.print("Font height:");
+Serial.println(ffDisplay.terminalScreen.fontHeight());
+
+  // ffDisplay.setTextSize(2);
+  //   ffDisplay.setCursor(40, 5);
+  // ffDisplay.print(F("Friend"));
+
 // GPS
 #define GPSSerial Serial2
 #define GPSRX 37
