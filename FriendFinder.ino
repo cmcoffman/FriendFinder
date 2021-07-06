@@ -8,6 +8,7 @@
 #include <ESPmDNS.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include <Adafruit_BNO08x.h>
 #include "FriendFinder.h"
 
 
@@ -84,6 +85,7 @@ void handleOTA(void *parameter) {
 }
 #pragma endregion
 
+#pragma region GPS
 // GPS
 #define GPSSerial Serial2
 Adafruit_GPS GPS(&GPSSerial);
@@ -202,8 +204,8 @@ void printGPS(void *parameter) {
   vTaskDelay(2000 / portTICK_PERIOD_MS);
   }
 }
-
-
+#pragma endregion
+#pragma region LED
 // LED
 static const int led_pin = LED_BUILTIN;
 void toggleLED(void *parameter) {
@@ -214,32 +216,45 @@ void toggleLED(void *parameter) {
     vTaskDelay(1750 / portTICK_PERIOD_MS);
   }
 }
-
-
+#pragma endregion
+#pragma region IMU055
 // IMU
-Adafruit_BNO055 IMU = Adafruit_BNO055(55, 0x28); // id, address
-sensors_event_t orientationData , linearAccelData;
-double xPos = 0, yPos = 0, headingVel = 0;
-uint16_t BNO055_SAMPLERATE_DELAY_MS = 10; //how often to read data from the board
-uint16_t PRINT_DELAY_MS = 500; // how often to print the data
-//velocity = accel*dt (dt in seconds)
-//position = 0.5*accel*dt^2
-double ACCEL_VEL_TRANSITION =  (double)(BNO055_SAMPLERATE_DELAY_MS) / 1000.0;
-double ACCEL_POS_TRANSITION = 0.5 * ACCEL_VEL_TRANSITION * ACCEL_VEL_TRANSITION;
-double DEG_2_RAD = 0.01745329251; //trig functions require radians, BNO055 outputs degrees
-bool IMU_connected = false;
-static SemaphoreHandle_t IMU_mutex;   // Locks IMU object
-static SemaphoreHandle_t IMU_new;     //Signals NEW IMU data
+Adafruit_BNO055 IMU055 = Adafruit_BNO055(55, 0x28); // id, address
+bool IMU055_connected = false;
+static SemaphoreHandle_t IMU055_mutex;   // Locks IMU object
+static SemaphoreHandle_t IMU055_new;     //Signals NEW IMU data
 
-void updateIMU(void *parameter) {
+void handleIMU055(void *parameter) {
+  sensors_event_t orientationData , linearAccelData;
+  double xPos = 0, yPos = 0, headingVel = 0;
+  uint16_t BNO055_SAMPLERATE_DELAY_MS = 10; //how often to read data from the board
+  uint16_t PRINT_DELAY_MS = 500; // how often to print the data
+  //velocity = accel*dt (dt in seconds)
+  //position = 0.5*accel*dt^2
+  double ACCEL_VEL_TRANSITION =  (double)(BNO055_SAMPLERATE_DELAY_MS) / 1000.0;
+  double ACCEL_POS_TRANSITION = 0.5 * ACCEL_VEL_TRANSITION * ACCEL_VEL_TRANSITION;
+  double DEG_2_RAD = 0.01745329251; //trig functions require radians, BNO055 outputs degrees
   uint16_t printCount = 0; //counter to avoid printing every 10MS sample
-  while(1) {
+  
+  if (!IMU055.begin()) {
+    IMU055_connected = false;
+    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+    Serial.println("IMU ...!!!... [[FAIL]]");
+    xSemaphoreGive(Serial_mutex);  
+  } else {
+    IMU055_connected = true;
+    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+    Serial.println("IMU ...!!!... [[FAIL]]");
+    xSemaphoreGive(Serial_mutex);
+  }
+
+  while(IMU055_connected = true) {
     unsigned long tStart = micros();
     
-    xSemaphoreTake(IMU_mutex, portMAX_DELAY);
-    IMU.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+    xSemaphoreTake(IMU055_mutex, portMAX_DELAY);
+    IMU055.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
     //  bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-    IMU.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
+    IMU055.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
 
     xPos = xPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.x;
     yPos = yPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.y;
@@ -247,22 +262,20 @@ void updateIMU(void *parameter) {
     // velocity of sensor in the direction it's facing
     headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
 
-    xSemaphoreTake(status_mutex, portMAX_DELAY);
-    self_status.orientation_x = orientationData.orientation.x;
-    self_status.orientation_y = orientationData.orientation.y;
-    self_status.orientation_z = orientationData.orientation.z;
+    self_status.IMU055_orientation_x = orientationData.orientation.x;
+    self_status.IMU055_orientation_y = orientationData.orientation.y;
+    self_status.IMU055_orientation_z = orientationData.orientation.z;
 
     // Data Collection Complete
-    xSemaphoreGive(status_mutex);
-    xSemaphoreGive(IMU_mutex);
-    xSemaphoreGive(IMU_new);
+    xSemaphoreGive(IMU055_mutex);
+    xSemaphoreGive(IMU055_new);
 
     // Print Results (should be it's own task?)
     if (printCount * BNO055_SAMPLERATE_DELAY_MS >= PRINT_DELAY_MS) {
       //enough iterations have passed that we can print the latest data
       xSemaphoreTake(Serial_mutex, portMAX_DELAY);
       Serial.print("Heading: ");
-      xSemaphoreTake(IMU_mutex, portMAX_DELAY);
+      xSemaphoreTake(IMU055_mutex, portMAX_DELAY);
       Serial.println(orientationData.orientation.x);
       Serial.print("Position: ");
       Serial.print(xPos);
@@ -270,7 +283,7 @@ void updateIMU(void *parameter) {
       Serial.println(yPos);
       Serial.print("Speed: ");
       Serial.println(headingVel);
-      xSemaphoreGive(IMU_mutex);
+      xSemaphoreGive(IMU055_mutex);
       Serial.println("-------");
       xSemaphoreGive(Serial_mutex);
       printCount = 0;
@@ -285,7 +298,102 @@ void updateIMU(void *parameter) {
     }
   }
 }
+#pragma endregion
+#pragma region IMU085
+// IMU
+// For SPI mode, we need a CS pin
+#define BNO08X_CS 10
+#define BNO08X_INT 9
 
+// For SPI mode, we also need a RESET
+//#define BNO08X_RESET 5
+// but not for I2C or UART
+#define BNO08X_RESET -1
+
+Adafruit_BNO08x bno08x(BNO08X_RESET);
+sh2_SensorValue_t sensorValue;
+
+bool IMU055_connected = false;
+static SemaphoreHandle_t IMU055_mutex;   // Locks IMU object
+static SemaphoreHandle_t IMU055_new;     //Signals NEW IMU data
+
+void handleIMU055(void *parameter) {
+  sensors_event_t orientationData , linearAccelData;
+  double xPos = 0, yPos = 0, headingVel = 0;
+  uint16_t BNO055_SAMPLERATE_DELAY_MS = 10; //how often to read data from the board
+  uint16_t PRINT_DELAY_MS = 500; // how often to print the data
+  //velocity = accel*dt (dt in seconds)
+  //position = 0.5*accel*dt^2
+  double ACCEL_VEL_TRANSITION =  (double)(BNO055_SAMPLERATE_DELAY_MS) / 1000.0;
+  double ACCEL_POS_TRANSITION = 0.5 * ACCEL_VEL_TRANSITION * ACCEL_VEL_TRANSITION;
+  double DEG_2_RAD = 0.01745329251; //trig functions require radians, BNO055 outputs degrees
+  uint16_t printCount = 0; //counter to avoid printing every 10MS sample
+  
+  if (!IMU055.begin()) {
+    IMU055_connected = false;
+    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+    Serial.println("IMU ...!!!... [[FAIL]]");
+    xSemaphoreGive(Serial_mutex);  
+  } else {
+    IMU055_connected = true;
+    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+    Serial.println("IMU ...!!!... [[FAIL]]");
+    xSemaphoreGive(Serial_mutex);
+  }
+
+  while(IMU055_connected = true) {
+    unsigned long tStart = micros();
+    
+    xSemaphoreTake(IMU055_mutex, portMAX_DELAY);
+    IMU055.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+    //  bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
+    IMU055.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
+
+    xPos = xPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.x;
+    yPos = yPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.y;
+
+    // velocity of sensor in the direction it's facing
+    headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
+
+    self_status.IMU055_orientation_x = orientationData.orientation.x;
+    self_status.IMU055_orientation_y = orientationData.orientation.y;
+    self_status.IMU055_orientation_z = orientationData.orientation.z;
+
+    // Data Collection Complete
+    xSemaphoreGive(IMU055_mutex);
+    xSemaphoreGive(IMU055_new);
+
+    // Print Results (should be it's own task?)
+    if (printCount * BNO055_SAMPLERATE_DELAY_MS >= PRINT_DELAY_MS) {
+      //enough iterations have passed that we can print the latest data
+      xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+      Serial.print("Heading: ");
+      xSemaphoreTake(IMU055_mutex, portMAX_DELAY);
+      Serial.println(orientationData.orientation.x);
+      Serial.print("Position: ");
+      Serial.print(xPos);
+      Serial.print(" , ");
+      Serial.println(yPos);
+      Serial.print("Speed: ");
+      Serial.println(headingVel);
+      xSemaphoreGive(IMU055_mutex);
+      Serial.println("-------");
+      xSemaphoreGive(Serial_mutex);
+      printCount = 0;
+    }
+    else {
+      printCount = printCount + 1;
+    }
+    // This seems clumsy?
+    while ((micros() - tStart) < (BNO055_SAMPLERATE_DELAY_MS * 1000))
+    {
+      taskYIELD();
+    }
+  }
+}
+#pragma endregion
+
+#pragma region Display
 // Display
 TFT_eSPI tft = TFT_eSPI();
 // Screen Buffers
@@ -328,7 +436,7 @@ void updateTFT(void *parameter) {
     vTaskDelay(16 / portTICK_PERIOD_MS); // 16 ms should be ~60 fps
   }
 }
-
+#pragma endregion
 
 void setup() {
   // Serial
@@ -404,26 +512,15 @@ void setup() {
                   app_cpu);     // Run on one core for demo purposes (ESP32 only)
   
   // Setup IMU
-  if (!IMU.begin()) {
-    IMU_connected = false;
-    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-    Serial.println("IMU ...!!!... [[FAIL]]");
-    xSemaphoreGive(Serial_mutex);  
-  } else {
-    IMU_connected = true;
-    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-    Serial.println("IMU ...!!!... [[FAIL]]");
-    xSemaphoreGive(Serial_mutex);
-  }
+
   
   // IMU Tasks
-  IMU_mutex = xSemaphoreCreateMutex();
-  IMU_new = xSemaphoreCreateBinary();
-  //xSemaphoreTake(IMU_new, portMAX_DELAY);
+  IMU055_mutex = xSemaphoreCreateMutex();
+  IMU055_new = xSemaphoreCreateBinary();
 
   xTaskCreatePinnedToCore(  // Use xTaskCreate() in vanilla FreeRTOS
-                updateIMU,    // Function to be called
-                "Update IMU", // Name of task
+                handleIMU055,    // Function to be called
+                "Handle IMU055", // Name of task
                 2048,         // Stack size (bytes in ESP32, words in FreeRTOS)
                 NULL,         // Parameter to pass to function
                 1,            // Task priority (0 to configMAX_PRIORITIES - 1)
