@@ -12,8 +12,21 @@ struct ffStatus {
                            ///< Divide by 10000000.0 to get a double.
   int32_t longitude_fixed; ///< Fixed point longitude in decimal degrees
                            ///< Divide by 10000000.0 to get a double.
-  float orientation_x;
-  float orientation_y;
-  float orientation_z;
+  
+  uint8_t primary_IMU;  // 1 = BNO055 ; 2 = BNO085
+  float orientation_x;  // Consensus data
+  float orientation_y;  // Consensus data
+  float orientation_z;  // Consensus data
+  
+  
+  float IMU055_orientation_x;  // BNO055 data
+  float IMU055_orientation_y;  // BNO055 data
+  float IMU055_orientation_z;  // BNO055 data
+  
+  float IMU085_orientation_x;  // BNO085 data
+  float IMU085_orientation_y;  // BNO085 data
+  float IMU085_orientation_z;  // BNO085 data
+  
   float battery_V;
 };
+
