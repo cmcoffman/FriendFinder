@@ -4,6 +4,11 @@
 #include <Adafruit_BNO055.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
+#include <ArduinoOTA.h>
+#include <ESPmDNS.h>
+#include <WiFi.h>
+#include <WiFiUdp.h>
+#include "FriendFinder.h"
 
 
 // FreeRTOS
@@ -13,9 +18,71 @@ static const BaseType_t app_cpu = 0;
 static const BaseType_t app_cpu = 1;
 #endif
 
+// FF Data
+ffStatus self_status;
+static SemaphoreHandle_t status_mutex;   // Locks GPS object
+
+
 // Serial Terminal Output
 static SemaphoreHandle_t Serial_mutex;   // Locks Serial object
 
+#pragma region OTA Update
+// OTA Update
+const char *ssid = "***REMOVED***";
+const char *password = "***REMOVED***";
+
+void handleOTA(void *parameter) {
+  // 'Setup'
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+    Serial.println("Connection Failed! Rebooting...");
+    delay(5000);
+    ESP.restart();
+  }
+  ArduinoOTA.setHostname("FFProto");
+
+  ArduinoOTA
+      .onStart([]() {
+        String type;
+        if (ArduinoOTA.getCommand() == U_FLASH)
+          type = "sketch";
+        else  // U_SPIFFS
+          type = "filesystem";
+
+        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS
+        // using SPIFFS.end()
+        Serial.println("Start updating " + type);
+      })
+      .onEnd([]() { Serial.println("\nEnd"); })
+      .onProgress([](unsigned int progress, unsigned int total) {
+        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+      })
+      .onError([](ota_error_t error) {
+        Serial.printf("Error[%u]: ", error);
+        if (error == OTA_AUTH_ERROR)
+          Serial.println("Auth Failed");
+        else if (error == OTA_BEGIN_ERROR)
+          Serial.println("Begin Failed");
+        else if (error == OTA_CONNECT_ERROR)
+          Serial.println("Connect Failed");
+        else if (error == OTA_RECEIVE_ERROR)
+          Serial.println("Receive Failed");
+        else if (error == OTA_END_ERROR)
+          Serial.println("End Failed");
+      });
+
+  ArduinoOTA.begin();
+  Serial.println("OTA Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  // 'Loop'
+  while(1) {
+  ArduinoOTA.handle();
+  };
+}
+#pragma endregion
 
 // GPS
 #define GPSSerial Serial2
@@ -38,6 +105,14 @@ void updateGPS(void *parameter) {
   if (GPS.newNMEAreceived()) {
     xSemaphoreTake(GPS_mutex, portMAX_DELAY);
     if (GPS.parse(GPS.lastNMEA())) { // sets newNMEAreceived() = false
+      xSemaphoreTake(status_mutex, portMAX_DELAY);
+      self_status.fixquality = GPS.fixquality;
+      self_status.fixquality_3d = GPS.fixquality_3d;
+      self_status.latitude_fixed = GPS.latitude_fixed;
+      self_status.longitude_fixed = GPS.longitude_fixed;
+      self_status.latitude = GPS.latitude_fixed / 10000000.0;
+      self_status.longitude = GPS.longitude_fixed / 10000000.0;
+      xSemaphoreGive(status_mutex);
       xSemaphoreGive(GPS_new);
     } 
   }
@@ -134,9 +209,9 @@ static const int led_pin = LED_BUILTIN;
 void toggleLED(void *parameter) {
   while(1) {
     digitalWrite(led_pin, HIGH);
-    vTaskDelay(500 / portTICK_PERIOD_MS);
+    vTaskDelay(250 / portTICK_PERIOD_MS);
     digitalWrite(led_pin, LOW);
-    vTaskDelay(500 / portTICK_PERIOD_MS);
+    vTaskDelay(1750 / portTICK_PERIOD_MS);
   }
 }
 
@@ -172,7 +247,13 @@ void updateIMU(void *parameter) {
     // velocity of sensor in the direction it's facing
     headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
 
+    xSemaphoreTake(status_mutex, portMAX_DELAY);
+    self_status.orientation_x = orientationData.orientation.x;
+    self_status.orientation_y = orientationData.orientation.y;
+    self_status.orientation_z = orientationData.orientation.z;
+
     // Data Collection Complete
+    xSemaphoreGive(status_mutex);
     xSemaphoreGive(IMU_mutex);
     xSemaphoreGive(IMU_new);
 
@@ -181,6 +262,7 @@ void updateIMU(void *parameter) {
       //enough iterations have passed that we can print the latest data
       xSemaphoreTake(Serial_mutex, portMAX_DELAY);
       Serial.print("Heading: ");
+      xSemaphoreTake(IMU_mutex, portMAX_DELAY);
       Serial.println(orientationData.orientation.x);
       Serial.print("Position: ");
       Serial.print(xPos);
@@ -188,6 +270,7 @@ void updateIMU(void *parameter) {
       Serial.println(yPos);
       Serial.print("Speed: ");
       Serial.println(headingVel);
+      xSemaphoreGive(IMU_mutex);
       Serial.println("-------");
       xSemaphoreGive(Serial_mutex);
       printCount = 0;
@@ -234,9 +317,9 @@ void updateTFT(void *parameter) {
     if(!GPS.fix) MSD_screen.print(F("SPACE // [INVALID]"));
     if(GPS.fix) {
       MSD_screen.print(F("SPACE // "));
-      MSD_screen.print(GPS.latitude, 7);
+      MSD_screen.print(self_status.latitude, 7);
       MSD_screen.print(F(", "));
-      MSD_screen.print(GPS.longitude, 7);
+      MSD_screen.print(self_status.longitude, 7);
     }
     xSemaphoreGive(GPS_mutex);
     MSD_screen.pushSprite(0, 0); 
@@ -246,6 +329,7 @@ void updateTFT(void *parameter) {
   }
 }
 
+
 void setup() {
   // Serial
   Serial_mutex = xSemaphoreCreateMutex();
@@ -253,6 +337,16 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Startup...");
   xSemaphoreGive(Serial_mutex);
+
+  // OTA Task
+  xTaskCreatePinnedToCore(  // Use xTaskCreate() in vanilla FreeRTOS
+                handleOTA,    // Function to be called
+                "Handle OTA", // Name of task
+                2048,         // Stack size (bytes in ESP32, words in FreeRTOS)
+                NULL,         // Parameter to pass to function
+                1,            // Task priority (0 to configMAX_PRIORITIES - 1)
+                NULL,         // Task handle
+                app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
   // Configure LED
   pinMode(led_pin, OUTPUT);
@@ -282,6 +376,9 @@ void setup() {
     GPS.sendCommand(PMTK_SET_NMEA_UPDATE_100_MILLIHERTZ); // 10 Seconds
     //GPS.sendCommand(PGCMD_ANTENNA); //Request antennae status as well?
   }
+
+  // FFStatus 
+  status_mutex = xSemaphoreCreateMutex();
 
   // GPS Tasks
     GPS_mutex = xSemaphoreCreateMutex();
