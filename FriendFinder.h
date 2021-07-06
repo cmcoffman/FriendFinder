@@ -1,20 +1,32 @@
+// Status
+struct ffStatus {
+  String macAddress;
+  uint8_t ffAddress;           // This is the address for the radio/datagram too
+  uint16_t ffColor;            // For displays/neopixels
+  uint8_t messageCounter = 0;  // total messages recieved from friend
+  uint8_t fixquality;
+  uint8_t fixquality_3d;
+  float latitude;
+  float longitude;
+  int32_t latitude_fixed;  ///< Fixed point latitude in decimal degrees.
+                           ///< Divide by 10000000.0 to get a double.
+  int32_t longitude_fixed; ///< Fixed point longitude in decimal degrees
+                           ///< Divide by 10000000.0 to get a double.
+  
+  uint8_t primary_IMU;  // 1 = BNO055 ; 2 = BNO085
+  float orientation_x;  // Consensus data
+  float orientation_y;  // Consensus data
+  float orientation_z;  // Consensus data
+  
+  
+  float IMU055_orientation_x;  // BNO055 data
+  float IMU055_orientation_y;  // BNO055 data
+  float IMU055_orientation_z;  // BNO055 data
+  
+  float IMU085_orientation_x;  // BNO085 data
+  float IMU085_orientation_y;  // BNO085 data
+  float IMU085_orientation_z;  // BNO085 data
+  
+  float battery_V;
+};
 
-#include "Arduino.h"
-#include <SPI.h>
-
-
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BNO055.h>
-#include <utility/imumaths.h>
-#include "FFSerial.h"
-#include "FFRadio.h"
-#include "FFNeopixel.h"
-#include "FFIMU.h"
-
-
-#include "FFGPS.h"
-
-#include "FFData.h"
-
-
-#include "FFDisplay.h"
