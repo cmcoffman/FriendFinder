@@ -24,6 +24,7 @@ ffStatus self_status;
 static SemaphoreHandle_t status_mutex;   // Locks GPS object
 
 
+
 // Serial Terminal Output
 static SemaphoreHandle_t Serial_mutex;   // Locks Serial object
 
@@ -219,6 +220,7 @@ void toggleLED(void *parameter) {
   }
 }
 #pragma endregion
+
 #pragma region IMU055
 // IMU
 Adafruit_BNO055 IMU055 = Adafruit_BNO055(55, 0x28); // id, address
@@ -302,7 +304,6 @@ void handleIMU055(void *parameter) {
 }
 #pragma endregion
 #pragma region IMU085
-// IMU
 // For SPI mode, we need a CS` pin
 // #define BNO08X_CS 10
 #define BNO08X_INT 9
@@ -315,13 +316,7 @@ void handleIMU055(void *parameter) {
 Adafruit_BNO08x bno08x(BNO08X_RESET);
 sh2_SensorValue_t sensorValue;
 
-bool IMU085_connected = false;
-static SemaphoreHandle_t IMU085_mutex;   // Locks IMU object
-static SemaphoreHandle_t IMU085_new;     //Signals NEW IMU data
-
-
-void handleIMU085(void *parameter) {
-  void setReports(void) {
+void setReports(void) {
     Serial.println("Setting desired reports");
     if (!bno08x.enableReport(SH2_ACCELEROMETER)) {
       Serial.println("Could not enable accelerometer");
@@ -368,8 +363,8 @@ void handleIMU085(void *parameter) {
     if (!bno08x.enableReport(SH2_PERSONAL_ACTIVITY_CLASSIFIER)) {
       Serial.println("Could not enable personal activity classifier");
     }
-  }
-  void printActivity(uint8_t activity_id) {
+}
+void printActivity(uint8_t activity_id) {
     switch (activity_id) {
       case PAC_UNKNOWN:
         Serial.print("Unknown");
@@ -404,8 +399,13 @@ void handleIMU085(void *parameter) {
     Serial.print(" (");
     Serial.print(activity_id);
     Serial.print(")");
-  }
+}
 
+bool IMU085_connected = false;
+static SemaphoreHandle_t IMU085_mutex;   // Locks IMU object
+static SemaphoreHandle_t IMU085_new;     //Signals NEW IMU data
+
+void handleIMU085(void *parameter) {
   xSemaphoreTake(Serial_mutex, portMAX_DELAY);
   Serial.println("Adafruit BNO08x test!");
 
@@ -434,7 +434,9 @@ void handleIMU085(void *parameter) {
     setReports();
     Serial.println("IMU085 Startup /// [OK]");
   }
+
   xSemaphoreGive(Serial_mutex);
+  
   // 'Loop'
   while (IMU085_connected) {
     vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -501,7 +503,40 @@ void handleIMU085(void *parameter) {
         Serial.print(sensorValue.un.rotationVector.j);
         Serial.print(" k: ");
         Serial.println(sensorValue.un.rotationVector.k);
+        xSemaphoreGive(Serial_mutex);
+
+        float qr = sensorValue.un.rotationVector.real;
+        float qi = sensorValue.un.rotationVector.i;
+        float qj = sensorValue.un.rotationVector.j; 
+        float qk = sensorValue.un.rotationVector.k;
+
+        float sqr = sq(qr);
+        float sqi = sq(qi);
+        float sqj = sq(qj);
+        float sqk = sq(qk);
+
+        float yaw = atan2(2.0 * (qi * qj + qk * qr), (sqi - sqj - sqk + sqr));
+        float pitch = asin(-2.0 * (qi * qk - qj * qr) / (sqi + sqj + sqk + sqr));
+        float roll = atan2(2.0 * (qj * qk + qi * qr), (-sqi - sqj + sqk + sqr));
+        
+        // Convert to degrees
+        yaw *= RAD_TO_DEG;
+        pitch *= RAD_TO_DEG;
+        roll *= RAD_TO_DEG;
+
+        // Assign to status object
+        xSemaphoreTake(IMU085_mutex, portMAX_DELAY);                          
+        self_status.IMU085_rotationVector_real = sensorValue.un.rotationVector.real;
+        self_status.IMU085_rotationVector_i = sensorValue.un.rotationVector.i;                          
+        self_status.IMU085_rotationVector_j = sensorValue.un.rotationVector.j;   
+        self_status.IMU085_rotationVector_k = sensorValue.un.rotationVector.k;
+        self_status.IMU085_rotationVector_yaw = yaw;
+        self_status.IMU085_rotationVector_pitch = pitch;
+        self_status.IMU085_rotationVector_roll  = roll;
+        xSemaphoreGive(IMU085_mutex);   
+        xSemaphoreGive(IMU085_new);   
         break;
+
       case SH2_GEOMAGNETIC_ROTATION_VECTOR:
         Serial.print("Geo-Magnetic Rotation Vector - r: ");
         Serial.print(sensorValue.un.geoMagRotationVector.real);
@@ -657,9 +692,27 @@ void updateTFT(void *parameter) {
       MSD_screen.print(F(", "));
       MSD_screen.print(self_status.longitude, 7);
     }
-    xSemaphoreGive(GPS_mutex);
-    MSD_screen.pushSprite(0, 0);
     xSemaphoreGive(TFT_mutex);
+    xSemaphoreGive(GPS_mutex);
+
+    // Line 3 (POV)
+    xSemaphoreTake(IMU085_new, portMAX_DELAY);
+    xSemaphoreTake(IMU085_mutex, portMAX_DELAY);
+    MSD_screen.setCursor(0, 32);
+    MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+    MSD_screen.print(F("YPR // "));
+    MSD_screen.print(self_status.IMU085_rotationVector_yaw);
+    MSD_screen.print(F(", "));
+    MSD_screen.print(self_status.IMU085_rotationVector_pitch);
+    MSD_screen.print(F(", "));
+    MSD_screen.print(self_status.IMU085_rotationVector_roll);
+    xSemaphoreGive(IMU085_mutex);
+    xSemaphoreGive(TFT_mutex);
+    
+
+
+    MSD_screen.pushSprite(0, 0);
+    
 
     vTaskDelay(16 / portTICK_PERIOD_MS); // 16 ms should be ~60 fps
   }
