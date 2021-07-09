@@ -31,3 +31,19 @@
   Serial.print(" | z= ");
   Serial.println(z);
 }
+
+
+// Serial.print(sensorValue.un.rotationVector.real);
+// Serial.print(sensorValue.un.rotationVector.i);
+// Serial.print(sensorValue.un.rotationVector.j);
+// Serial.print(sensorValue.un.rotationVector.k);
+
+// sensorValue.un.rotationVector.real
+// sensorValue.un.rotationVector.i
+// sensorValue.un.rotationVector.j
+// sensorValue.un.rotationVector.k
+
+// float rotationVector_real
+// float rotationVector_i
+// float rotationVector_j
+// float rotationVector_k
