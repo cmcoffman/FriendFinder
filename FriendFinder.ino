@@ -1,3 +1,4 @@
+#include "FriendFinder.h"
 #include <Adafruit_GPS.h>
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
@@ -9,7 +10,7 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <Adafruit_BNO08x.h>
-#include "FriendFinder.h"
+
 
 
 // FreeRTOS
@@ -77,6 +78,7 @@ void handleOTA(void *parameter) {
   });
 
   ArduinoOTA.begin();
+  
   Serial.println("OTA Ready");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
@@ -84,7 +86,8 @@ void handleOTA(void *parameter) {
   // 'Loop'
   while (1) {
     ArduinoOTA.handle();
-  };
+    taskYIELD();
+  }
 }
 #pragma endregion
 
@@ -93,7 +96,6 @@ void handleOTA(void *parameter) {
 #define GPSSerial Serial2
 Adafruit_GPS GPS(&GPSSerial);
 #define GPSECHO false // Echo GPS to Serial terminal?
-bool GPS_connected = false;
 static SemaphoreHandle_t GPS_mutex;   // Locks GPS object
 static SemaphoreHandle_t GPS_new;     //Signals NEW GPS data
 
@@ -108,7 +110,6 @@ void updateGPS(void *parameter) {
     //   xSemaphoreGive(Serial_mutex);
     // // if a sentence is received, we can check the checksum, parse it...
     if (GPS.newNMEAreceived()) {
-      xSemaphoreTake(GPS_mutex, portMAX_DELAY);
       if (GPS.parse(GPS.lastNMEA())) { // sets newNMEAreceived() = false
         xSemaphoreTake(status_mutex, portMAX_DELAY);
         self_status.fixquality = GPS.fixquality;
@@ -229,9 +230,12 @@ static SemaphoreHandle_t IMU055_mutex;   // Locks IMU object
 static SemaphoreHandle_t IMU055_new;     //Signals NEW IMU data
 
 void handleIMU055(void *parameter) {
+  uint16_t BNO055_SAMPLERATE_DELAY_MS = 10; // how long between readings (dbl check w/ hardware)
+  TickType_t xLastWakeTime; // object to store execution timing
+  const TickType_t xFrequency = BNO055_SAMPLERATE_DELAY_MS / portTICK_PERIOD_MS; // how many ticks between updates
+
   sensors_event_t orientationData , linearAccelData;
   double xPos = 0, yPos = 0, headingVel = 0;
-  uint16_t BNO055_SAMPLERATE_DELAY_MS = 10; //how often to read data from the board
   uint16_t PRINT_DELAY_MS = 500; // how often to print the data
   //velocity = accel*dt (dt in seconds)
   //position = 0.5*accel*dt^2
@@ -241,65 +245,69 @@ void handleIMU055(void *parameter) {
   uint16_t printCount = 0; //counter to avoid printing every 10MS sample
 
   if (!IMU055.begin()) {
-    IMU055_connected = false;
-    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-    Serial.println("IMU ...!!!... [[FAIL]]");
-    xSemaphoreGive(Serial_mutex);
+    self_status.IMU055_connected = false;
+    if (xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+      Serial.println("IMU ...!!!... [[FAIL]]");
+      xSemaphoreGive(Serial_mutex);
+    }
   } else {
-    IMU055_connected = true;
-    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-    Serial.println("IMU ...!!!... [[FAIL]]");
-    xSemaphoreGive(Serial_mutex);
+    self_status.IMU055_connected = true;
+    if (xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+      Serial.println("IMU ...///... [OK]");
+      xSemaphoreGive(Serial_mutex);
+    }
   }
 
-  while (IMU055_connected = true) {
-    unsigned long tStart = micros();
+  while (1) {
+    if (self_status.IMU055_connected) {
+      unsigned long tStart = micros();
+      xLastWakeTime = xTaskGetTickCount();
+      IMU055.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
+      //  bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
+      IMU055.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
 
-    xSemaphoreTake(IMU055_mutex, portMAX_DELAY);
-    IMU055.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-    //  bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-    IMU055.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
+      xPos = xPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.x;
+      yPos = yPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.y;
 
-    xPos = xPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.x;
-    yPos = yPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.y;
+      // velocity of sensor in the direction it's facing
+      headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
 
-    // velocity of sensor in the direction it's facing
-    headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
-
-    self_status.IMU055_orientation_x = orientationData.orientation.x;
-    self_status.IMU055_orientation_y = orientationData.orientation.y;
-    self_status.IMU055_orientation_z = orientationData.orientation.z;
-
-    // Data Collection Complete
-    xSemaphoreGive(IMU055_mutex);
-    xSemaphoreGive(IMU055_new);
-
-    // Print Results (should be it's own task?)
-    if (printCount * BNO055_SAMPLERATE_DELAY_MS >= PRINT_DELAY_MS) {
-      //enough iterations have passed that we can print the latest data
-      xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-      Serial.print("Heading: ");
-      xSemaphoreTake(IMU055_mutex, portMAX_DELAY);
-      Serial.println(orientationData.orientation.x);
-      Serial.print("Position: ");
-      Serial.print(xPos);
-      Serial.print(" , ");
-      Serial.println(yPos);
-      Serial.print("Speed: ");
-      Serial.println(headingVel);
-      xSemaphoreGive(IMU055_mutex);
-      Serial.println("-------");
-      xSemaphoreGive(Serial_mutex);
-      printCount = 0;
-    }
-    else {
-      printCount = printCount + 1;
-    }
-    // This seems clumsy?
-    while ((micros() - tStart) < (BNO055_SAMPLERATE_DELAY_MS * 1000))
-    {
-      taskYIELD();
-    }
+      // Store Data
+      if (xSemaphoreTake(status_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS) == pdTRUE) {
+        self_status.IMU055_orientation_x = orientationData.orientation.x;
+        self_status.IMU055_orientation_y = orientationData.orientation.y;
+        self_status.IMU055_orientation_z = orientationData.orientation.z;
+        xSemaphoreGive(status_mutex);
+      } else {
+        // Couldn't store data should I do something?
+      }
+      // Data Collection Complete
+      
+      // Print Results (should be it's own task?)
+      if (printCount * BNO055_SAMPLERATE_DELAY_MS >= PRINT_DELAY_MS) {
+        //enough iterations have passed that we can print the latest data
+        if (xSemaphoreTake(Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS) == pdTRUE) {
+          Serial.print("Heading: ");
+          Serial.println(orientationData.orientation.x);
+          Serial.print("Position: ");
+          Serial.print(xPos);
+          Serial.print(" , ");
+          Serial.println(yPos);
+          Serial.print("Speed: ");
+          Serial.println(headingVel);
+          Serial.println("-------");
+          xSemaphoreGive(Serial_mutex);
+          printCount = 0;
+        } 
+      } else {
+          printCount = printCount + 1;
+      }
+      // Wait until next cycle
+      vTaskDelayUntil( &xLastWakeTime, xFrequency );
+    } else {
+    // Not connected - suspend
+    vTaskSuspend(NULL);
+  }
   }
 }
 #pragma endregion
@@ -401,20 +409,18 @@ void printActivity(uint8_t activity_id) {
     Serial.print(")");
 }
 
-bool IMU085_connected = false;
 static SemaphoreHandle_t IMU085_mutex;   // Locks IMU object
 static SemaphoreHandle_t IMU085_new;     //Signals NEW IMU data
 
 void handleIMU085(void *parameter) {
-  xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-  Serial.println("Adafruit BNO08x test!");
+  if (xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) Serial.println("Adafruit BNO08x test!");
 
   // Try to initialize!
   if (!bno08x.begin_I2C()) {
-    IMU085_connected = false;
+    self_status.IMU085_connected = false;
     Serial.println("Failed to find BNO08x chip");
   } else {
-    IMU085_connected = true;
+    self_status.IMU085_connected = true;
     Serial.println("BNO08x Found!");
     for (int n = 0; n < bno08x.prodIds.numEntries; n++) {
       Serial.print("Part ");
@@ -430,15 +436,22 @@ void handleIMU085(void *parameter) {
     }
   }
 
-  if (IMU085_connected) {
-    setReports();
-    Serial.println("IMU085 Startup /// [OK]");
+  if (xSemaphoreTake(Serial_mutex, portMAX_DELAY)) {
+    if (self_status.IMU085_connected) {
+      setReports();
+      Serial.println("IMU085 Startup /// [OK]");
+    } else {
+      Serial.println("IMU085 Startup /// [FAIL]");
+    }
+    xSemaphoreGive(Serial_mutex);
   }
-
-  xSemaphoreGive(Serial_mutex);
+   
   
   // 'Loop'
-  while (IMU085_connected) {
+  while (1) {
+    if (self_status.IMU085_connected) {
+    //vTaskDelay(16 / portTICK_PERIOD_MS);
+    
     vTaskDelay(10 / portTICK_PERIOD_MS);
 
     if (bno08x.wasReset()) {
@@ -452,7 +465,7 @@ void handleIMU085(void *parameter) {
       return;
     }
 
-    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+    
     switch (sensorValue.sensorId) {
       case SH2_ACCELEROMETER:
         Serial.print("Accelerometer - x: ");
@@ -495,15 +508,20 @@ void handleIMU085(void *parameter) {
         Serial.println(sensorValue.un.gravity.z);
         break;
       case SH2_ROTATION_VECTOR:
-        Serial.print("Rotation Vector - r: ");
-        Serial.print(sensorValue.un.rotationVector.real);
-        Serial.print(" i: ");
-        Serial.print(sensorValue.un.rotationVector.i);
-        Serial.print(" j: ");
-        Serial.print(sensorValue.un.rotationVector.j);
-        Serial.print(" k: ");
-        Serial.println(sensorValue.un.rotationVector.k);
-        xSemaphoreGive(Serial_mutex);
+      {
+        // Try to print on Serial
+        // if (xSemaphoreTake( xSemaphore, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+        if (xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+          Serial.print("Rotation Vector - r: ");
+          Serial.print(sensorValue.un.rotationVector.real);
+          Serial.print(" i: ");
+          Serial.print(sensorValue.un.rotationVector.i);
+          Serial.print(" j: ");
+          Serial.print(sensorValue.un.rotationVector.j);
+          Serial.print(" k: ");
+          Serial.println(sensorValue.un.rotationVector.k);
+          xSemaphoreGive(Serial_mutex);
+        }
 
         float qr = sensorValue.un.rotationVector.real;
         float qi = sensorValue.un.rotationVector.i;
@@ -525,18 +543,20 @@ void handleIMU085(void *parameter) {
         roll *= RAD_TO_DEG;
 
         // Assign to status object
-        xSemaphoreTake(IMU085_mutex, portMAX_DELAY);                          
+        if (xSemaphoreTake( status_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
         self_status.IMU085_rotationVector_real = sensorValue.un.rotationVector.real;
-        self_status.IMU085_rotationVector_i = sensorValue.un.rotationVector.i;                          
-        self_status.IMU085_rotationVector_j = sensorValue.un.rotationVector.j;   
+        self_status.IMU085_rotationVector_i = sensorValue.un.rotationVector.i;
+        self_status.IMU085_rotationVector_j = sensorValue.un.rotationVector.j;
         self_status.IMU085_rotationVector_k = sensorValue.un.rotationVector.k;
         self_status.IMU085_rotationVector_yaw = yaw;
         self_status.IMU085_rotationVector_pitch = pitch;
         self_status.IMU085_rotationVector_roll  = roll;
-        xSemaphoreGive(IMU085_mutex);   
-        xSemaphoreGive(IMU085_new);   
+        xSemaphoreGive(status_mutex);
+        } else {
+          // Couldn't store data should I do something?
+        }
         break;
-
+      }
       case SH2_GEOMAGNETIC_ROTATION_VECTOR:
         Serial.print("Geo-Magnetic Rotation Vector - r: ");
         Serial.print(sensorValue.un.geoMagRotationVector.real);
@@ -652,6 +672,9 @@ void handleIMU085(void *parameter) {
         }
     }
     xSemaphoreGive(Serial_mutex);
+    } else {
+    vTaskSuspend(NULL); // Not Connected suspend indefinitely
+    }
   }
 }
 #pragma endregion
@@ -671,52 +694,90 @@ TFT_eSprite MSD_screen = TFT_eSprite(&tft);
 static SemaphoreHandle_t TFT_mutex;   // Locks IMU object
 static SemaphoreHandle_t TFT_new;     //Signals NEW IMU data
 
-void updateTFT(void *parameter) {
+void handleTFT(void *parameter) {
+  Serial.println("Display Startup");
+  
+  // TFT Display Setup
+  pinMode(TFT_BL, OUTPUT);
+  tft.init();
+  tft.setRotation(1);
+  tft.fillScreen(TFT_ORANGE);
+  
+
+  // Setup "Master System Display" Screen/Spite
+  MSD_screen.setRotation(1);
+  MSD_screen.createSprite(240, 135);
+  MSD_screen.fillSprite(TFT_BLACK);
+  MSD_screen.setTextFont(2);
+
   while (1) {
+    // Refresh Rate 
+    vTaskDelay(16 / portTICK_PERIOD_MS); // 16 ms should be ~60 fps
     // Line 1 (Time)
     MSD_screen.setCursor(0, 0);
     MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
     MSD_screen.print(F("TIME // [UNDEFINED]"));
+    MSD_screen.pushSprite(0, 0);
 
     // Line 2 (Space)
     MSD_screen.setCursor(0, 16);
-    if (!GPS_connected) MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    if (GPS_connected) MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
-    xSemaphoreTake(GPS_new, portMAX_DELAY);
-    xSemaphoreTake(GPS_mutex, portMAX_DELAY);
-    xSemaphoreTake(TFT_mutex, portMAX_DELAY);
-    if (!GPS.fix) MSD_screen.print(F("SPACE // [INVALID]"));
-    if (GPS.fix) {
-      MSD_screen.print(F("SPACE // "));
-      MSD_screen.print(self_status.latitude, 7);
-      MSD_screen.print(F(", "));
-      MSD_screen.print(self_status.longitude, 7);
+    if (!self_status.GPS_connected) { // GPS Not Connected
+      MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      MSD_screen.print(F("SPACE // [FAIL]"));
+    } else { 
+      if (!self_status.GPS_fix) { // ...but no fix
+        if (self_status.GPS_naive) { // and GPS has never had a fix
+          MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
+          MSD_screen.print(F("SPACE // [INVALID]"));
+        } else { // GPS has had a fix before
+          MSD_screen.setTextColor(TFT_RED, TFT_BLACK);
+          MSD_screen.print(F("SPACE // [INVALID .. LOST]"));
+        }
+      } else { // GPS Connected with Fix 
+        // Try to store data for 1 ms
+        if(xSemaphoreTake( status_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+          if (self_status.GPS_naive) self_status.GPS_naive = false; // no longer naive
+          float lat = self_status.latitude;
+          float lon = self_status.longitude;
+          xSemaphoreGive(status_mutex);
+          MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+          MSD_screen.print(F("SPACE // "));
+          MSD_screen.print(lat, 7);
+          MSD_screen.print(F(", "));
+          MSD_screen.print(lon, 7);
+        } else { // Cant retrieve sempahore, probably should just pass() but I wanna see if it happens
+          MSD_screen.setTextColor(TFT_RED, TFT_BLACK);
+          MSD_screen.print(F("SPACE // [?? Blocked ??]"));
+        }
+      }
     }
-    xSemaphoreGive(TFT_mutex);
-    xSemaphoreGive(GPS_mutex);
-
-    // Line 3 (POV)
-    xSemaphoreTake(IMU085_new, portMAX_DELAY);
-    xSemaphoreTake(IMU085_mutex, portMAX_DELAY);
+    MSD_screen.pushSprite(0, 0);
+  
+    // Line 3 (POV) [BNO055]
     MSD_screen.setCursor(0, 32);
-    MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
-    MSD_screen.print(F("YPR // "));
-    MSD_screen.print(self_status.IMU085_rotationVector_yaw);
-    MSD_screen.print(F(", "));
-    MSD_screen.print(self_status.IMU085_rotationVector_pitch);
-    MSD_screen.print(F(", "));
-    MSD_screen.print(self_status.IMU085_rotationVector_roll);
-    xSemaphoreGive(IMU085_mutex);
-    xSemaphoreGive(TFT_mutex);
+
+
+    if(xSemaphoreTake( status_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+      MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+      MSD_screen.print(F("YPR // "));
+      MSD_screen.print(self_status.IMU085_rotationVector_yaw);
+      MSD_screen.print(F(", "));
+      MSD_screen.print(self_status.IMU085_rotationVector_pitch);
+      MSD_screen.print(F(", "));
+      MSD_screen.print(self_status.IMU085_rotationVector_roll);
+      xSemaphoreGive(status_mutex);
+    }
     
 
 
     MSD_screen.pushSprite(0, 0);
-    
 
-    vTaskDelay(16 / portTICK_PERIOD_MS); // 16 ms should be ~60 fps
+    
+    }
+    
   }
-}
+
+
 #pragma endregion
 
 void setup() {
@@ -737,6 +798,7 @@ void setup() {
     NULL,         // Task handle
     app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
+  Serial.println("OTA Task Started");
   // Configure LED
   pinMode(led_pin, OUTPUT);
   // LED Task
@@ -749,22 +811,27 @@ void setup() {
     NULL,         // Task handle
     app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
+  Serial.println("LED Task Started");
   // Setup GPS
   if (!GPS.begin(9600)) {
-    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-    Serial.println("GPS ...!!!... [[FAIL]]");
-    xSemaphoreGive(Serial_mutex);
-    GPS_connected = false;
+    if(xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+      Serial.println("GPS ...!!!... [[FAIL]]");
+      xSemaphoreGive(Serial_mutex);
+    }
+    self_status.GPS_connected = false;
   } else {
-    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-    Serial.println("GPS ...///... [OK]");
-    xSemaphoreGive(Serial_mutex);
-    GPS_connected = true;
+    if(xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+      Serial.println("GPS ...///... [OK]");
+      xSemaphoreGive(Serial_mutex);
+    }
+    self_status.GPS_connected = true;
     GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA);
     //GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ); // 1 second
     GPS.sendCommand(PMTK_SET_NMEA_UPDATE_100_MILLIHERTZ); // 10 Seconds
     //GPS.sendCommand(PGCMD_ANTENNA); //Request antennae status as well?
-  }
+  }  
+
+  
 
   // FFStatus
   status_mutex = xSemaphoreCreateMutex();
@@ -773,8 +840,7 @@ void setup() {
   GPS_mutex = xSemaphoreCreateMutex();
   GPS_new = xSemaphoreCreateBinary();
   //xSemaphoreTake(GPS_new, portMAX_DELAY);
-
-  xTaskCreatePinnedToCore(  // Use xTaskCreate() in vanilla FreeRTOS
+  xTaskCreatePinnedToCore(  //  "Update GPS"
     updateGPS,    // Function to be called
     "Update GPS", // Name of task
     2048,         // Stack size (bytes in ESP32, words in FreeRTOS)
@@ -783,7 +849,9 @@ void setup() {
     NULL,         // Task handle
     app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
-  xTaskCreatePinnedToCore(  // Use xTaskCreate() in vanilla FreeRTOS
+  
+  Serial.println("GPS Task Started");
+  xTaskCreatePinnedToCore(  // "Print GPS"
     printGPS,    // Function to be called
     "Print GPS", // Name of task
     1024,         // Stack size (bytes in ESP32, words in FreeRTOS)
@@ -792,14 +860,18 @@ void setup() {
     NULL,         // Task handle
     app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
-  // Setup IMU
+ 
 
-
+  
+  
+  
+  Serial.println("GPS Print Task Started");
+  
   // IMU Tasks
   IMU055_mutex = xSemaphoreCreateMutex();
   IMU055_new = xSemaphoreCreateBinary();
 
-  xTaskCreatePinnedToCore(  // Use xTaskCreate() in vanilla FreeRTOS
+  xTaskCreatePinnedToCore(  // "Handle IMU055"
     handleIMU055,    // Function to be called
     "Handle IMU055", // Name of task
     2048,         // Stack size (bytes in ESP32, words in FreeRTOS)
@@ -808,24 +880,27 @@ void setup() {
     NULL,         // Task handle
     app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
-  // TFT Display Setup
-  pinMode(TFT_BL, OUTPUT);
-  tft.init();
-  tft.setRotation(1);
-  tft.fillScreen(TFT_BLACK);
+  Serial.println("IMU055 Task Started");
+  IMU085_mutex = xSemaphoreCreateMutex();
+  IMU085_new = xSemaphoreCreateBinary();
+  xTaskCreatePinnedToCore(  // "Handle IMU085"
+    handleIMU085,    // Function to be called
+    "Handle IMU085", // Name of task
+    2048,         // Stack size (bytes in ESP32, words in FreeRTOS)
+    NULL,         // Parameter to pass to function
+    1,            // Task priority (0 to configMAX_PRIORITIES - 1)
+    NULL,         // Task handle
+    app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
-  // Setup "Terminal" Screen/Spite
-  MSD_screen.setRotation(1);
-  MSD_screen.createSprite(240, 135);
-  MSD_screen.fillSprite(TFT_BLACK);
-  MSD_screen.setTextFont(2);
+  
 
+  Serial.println("IMU085 Task Started");
   // TFT Tasks
   TFT_mutex = xSemaphoreCreateMutex();
   TFT_new = xSemaphoreCreateBinary();
-  xTaskCreatePinnedToCore(    // Use xTaskCreate() in vanilla FreeRTOS
-    updateTFT,    // Function to be called
-    "Update TFT", // Name of task
+  xTaskCreatePinnedToCore(    // "Handle TFT"
+    handleTFT,    // Function to be called
+    "Handle TFT", // Name of task
     10000,         // Stack size (bytes in ESP32, words in FreeRTOS)
     NULL,         // Parameter to pass to function
     1,            // Task priority (0 to configMAX_PRIORITIES - 1)
@@ -833,9 +908,11 @@ void setup() {
     app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
 
-  xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+  Serial.println("TFT Task Started");
+
+
   Serial.println("All tasks created");
-  xSemaphoreGive(Serial_mutex);
+
 }
 
 
