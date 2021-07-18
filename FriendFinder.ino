@@ -4,6 +4,8 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <SPI.h>
+#include "AF_240x135_ST7789.h"      // Local config header
+#define USER_SETUP_LOADED   // forces use of local config header
 #include <TFT_eSPI.h>
 #include <ArduinoOTA.h>
 #include <ESPmDNS.h>
@@ -25,10 +27,17 @@ ffStatus self_status;
 static SemaphoreHandle_t status_mutex;   // Locks GPS object
 
 
-
+#pragma region Serial Output
 // Serial Terminal Output
 static SemaphoreHandle_t Serial_mutex;   // Locks Serial object
+/* To do:
+  Comprehensive task for handling serial outputs
+    - use queues so tasks can hand off data and continue without
+      blocking, and still everything gets printed.
+    - task can be switched on and off to only enable when needed
+*/
 
+#pragma endregion
 #pragma region OTA Update
 // OTA Update
 const char *ssid = "nash_equilibrium";
@@ -209,15 +218,26 @@ void printGPS(void *parameter) {
   }
 }
 #pragma endregion
-#pragma region LED
+#pragma region LED/Heartbeat
 // LED
 static const int led_pin = LED_BUILTIN;
 void toggleLED(void *parameter) {
   while (1) {
+    // Analog write implementation is weird see:
+    // https://github.com/espressif/arduino-esp32/issues/4
+    //analogWrite(led_pin, 50);
     digitalWrite(led_pin, HIGH);
     vTaskDelay(250 / portTICK_PERIOD_MS);
     digitalWrite(led_pin, LOW);
+    //analogWrite(led_pin, LOW);
     vTaskDelay(1750 / portTICK_PERIOD_MS);
+
+    if (xSemaphoreTake(Serial_mutex, portMAX_DELAY)) {
+      Serial.println("Heartbeat <3");
+    } else {
+      Serial.println("** Serial Locked **");
+    }
+    
   }
 }
 #pragma endregion
@@ -781,13 +801,19 @@ void handleTFT(void *parameter) {
 #pragma endregion
 
 void setup() {
+  #pragma region Setup Serial
   // Serial
   Serial_mutex = xSemaphoreCreateMutex();
   xSemaphoreTake(Serial_mutex, portMAX_DELAY);
   Serial.begin(115200);
   Serial.println("Startup...");
   xSemaphoreGive(Serial_mutex);
-
+  #pragma endregion
+  #pragma region Data Setup
+  // FFStatus
+  status_mutex = xSemaphoreCreateMutex();
+  #pragma endregion
+  #pragma region Setup OTA
   // OTA Task
   xTaskCreatePinnedToCore(  // Use xTaskCreate() in vanilla FreeRTOS
     handleOTA,    // Function to be called
@@ -799,6 +825,8 @@ void setup() {
     app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
   Serial.println("OTA Task Started");
+  #pragma endregion
+  #pragma region Setup LED
   // Configure LED
   pinMode(led_pin, OUTPUT);
   // LED Task
@@ -812,6 +840,8 @@ void setup() {
     app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
   Serial.println("LED Task Started");
+  #pragma endregion
+  #pragma region GPS Setup
   // Setup GPS
   if (!GPS.begin(9600)) {
     if(xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
@@ -830,11 +860,6 @@ void setup() {
     GPS.sendCommand(PMTK_SET_NMEA_UPDATE_100_MILLIHERTZ); // 10 Seconds
     //GPS.sendCommand(PGCMD_ANTENNA); //Request antennae status as well?
   }  
-
-  
-
-  // FFStatus
-  status_mutex = xSemaphoreCreateMutex();
 
   // GPS Tasks
   GPS_mutex = xSemaphoreCreateMutex();
@@ -866,7 +891,8 @@ void setup() {
   
   
   Serial.println("GPS Print Task Started");
-  
+  #pragma endregion
+  #pragma region IMU Setup  
   // IMU Tasks
   IMU055_mutex = xSemaphoreCreateMutex();
   IMU055_new = xSemaphoreCreateBinary();
@@ -895,6 +921,8 @@ void setup() {
   
 
   Serial.println("IMU085 Task Started");
+  #pragma endregion
+  #pragma region TFT Setup
   // TFT Tasks
   TFT_mutex = xSemaphoreCreateMutex();
   TFT_new = xSemaphoreCreateBinary();
@@ -909,7 +937,7 @@ void setup() {
 
 
   Serial.println("TFT Task Started");
-
+  #pragma endregion
 
   Serial.println("All tasks created");
 
@@ -919,7 +947,8 @@ void setup() {
 
 void loop() {
   // Do nothing but allow yielding to lower-priority tasks
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+ // vTaskDelay(1000 / portTICK_PERIOD_MS);
+
 
   // setup() and loop() run in their own task with priority 1 in core 1
   // on ESP32

@@ -4,5 +4,5 @@
     "programmer": "AVRISP mkII",
     "port": "COM3",
     "output": "..\\_FF_build",
-    "configuration": "FlashFreq=80,UploadSpeed=921600,DebugLevel=none,PartitionScheme=default"
+    "configuration": "FlashFreq=80,UploadSpeed=921600,DebugLevel=error,PartitionScheme=default"
 }

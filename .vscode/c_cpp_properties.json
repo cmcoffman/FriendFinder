@@ -16,11 +16,7 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": false,
                 "path": [
-                    "${workspaceRoot}",
-                    "${workspaceFolder}",
-                    "C:\\Users\\Clayton.000\\Documents\\Arduino",
-                    "C:\\Program Files (x86)\\Arduino\\libraries",
-                    "C:\\Users\\Clayton\\AppData\\Local\\Arduino15\\packages**"
+
                 ]
             },
             "compilerPath": "C:\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\bin\\avr-gcc.exe",
