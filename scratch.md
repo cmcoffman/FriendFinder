@@ -47,3 +47,10 @@
 // float rotationVector_i
 // float rotationVector_j
 // float rotationVector_k
+
+
+2000 / portTICK_PERIOD_MS
+vTaskDelay(2000 / portTICK_PERIOD_MS);
+xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+if (xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {

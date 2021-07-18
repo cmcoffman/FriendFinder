@@ -111,112 +111,104 @@ static SemaphoreHandle_t GPS_new;     //Signals NEW GPS data
 void updateGPS(void *parameter) {
   while (1) {
     char c = GPS.read();
-    // if you want to debug, this is a good time to do it!
-    // if (GPSECHO)
-    //   if (c)
-    //   xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-    //     Serial.print(c);
-    //   xSemaphoreGive(Serial_mutex);
-    // // if a sentence is received, we can check the checksum, parse it...
     if (GPS.newNMEAreceived()) {
       if (GPS.parse(GPS.lastNMEA())) { // sets newNMEAreceived() = false
-        xSemaphoreTake(status_mutex, portMAX_DELAY);
+        if(xSemaphoreTake( GPS_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS )) {
         self_status.fixquality = GPS.fixquality;
         self_status.fixquality_3d = GPS.fixquality_3d;
         self_status.latitude_fixed = GPS.latitude_fixed;
         self_status.longitude_fixed = GPS.longitude_fixed;
         self_status.latitude = GPS.latitude_fixed / 10000000.0;
         self_status.longitude = GPS.longitude_fixed / 10000000.0;
-        xSemaphoreGive(status_mutex);
+        xSemaphoreGive(GPS_mutex);
         xSemaphoreGive(GPS_new);
+        }
       }
-    }
-    xSemaphoreGive(GPS_mutex);
+      xSemaphoreGive(GPS_mutex);
+     }
   }
 }
 
-void printGPS(void *parameter) {
-  while (1) {
-    xSemaphoreTake(GPS_new, portMAX_DELAY);
-    xSemaphoreTake(GPS_mutex, portMAX_DELAY);
-
-    // Time in seconds keeps increasing after we get the NMEA sentence.
-    // This estimate will lag real time due to transmission and parsing delays,
-    // but the lag should be small and should also be consistent.
-    float s = GPS.seconds + GPS.milliseconds / 1000. + GPS.secondsSinceTime();
-    int m = GPS.minute;
-    int h = GPS.hour;
-    int d = GPS.day;
-    // Adjust time and day forward to account for elapsed time.
-    // This will break at month boundaries!!! Humans will have to cope with
-    // April 31,32 etc.
-    while (s > 60) {
-      s -= 60;
-      m++;
-    }
-    while (m > 60) {
-      m -= 60;
-      h++;
-    }
-    while (h > 24) {
-      h -= 24;
-      d++;
-    }
-    xSemaphoreTake(Serial_mutex, portMAX_DELAY);
-    // ISO Standard Date Format, with leading zeros https://xkcd.com/1179/
-    Serial.print("\nDate: ");
-    Serial.print(GPS.year + 2000, DEC);
-    Serial.print("-");
-    if (GPS.month < 10)
-      Serial.print("0");
-    Serial.print(GPS.month, DEC);
-    Serial.print("-");
-    if (d < 10)
-      Serial.print("0");
-    Serial.print(d, DEC);
-    Serial.print("   Time: ");
-    if (h < 10)
-      Serial.print("0");
-    Serial.print(h, DEC);
-    Serial.print(':');
-    if (m < 10)
-      Serial.print("0");
-    Serial.print(m, DEC);
-    Serial.print(':');
-    if (s < 10)
-      Serial.print("0");
-    Serial.println(s, 3);
-    Serial.print("Fix: ");
-    Serial.print((int)GPS.fix);
-    Serial.print(" quality: ");
-    Serial.println((int)GPS.fixquality);
-    Serial.print("Time [s] since last fix: ");
-    Serial.println(GPS.secondsSinceFix(), 3);
-    Serial.print("    since last GPS time: ");
-    Serial.println(GPS.secondsSinceTime(), 3);
-    Serial.print("    since last GPS date: ");
-    Serial.println(GPS.secondsSinceDate(), 3);
-    if (GPS.fix) {
-      Serial.print("Location: ");
-      Serial.print(GPS.latitude, 4);
-      Serial.print(GPS.lat);
-      Serial.print(", ");
-      Serial.print(GPS.longitude, 4);
-      Serial.println(GPS.lon);
-      Serial.print("Speed (knots): ");
-      Serial.println(GPS.speed);
-      Serial.print("Angle: ");
-      Serial.println(GPS.angle);
-      Serial.print("Altitude: ");
-      Serial.println(GPS.altitude);
-      Serial.print("Satellites: ");
-      Serial.println((int)GPS.satellites);
-    }
-    xSemaphoreGive(GPS_mutex);
-    xSemaphoreGive(Serial_mutex);
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-  }
-}
+// void printGPS(void *parameter) {
+//   while (1) {
+//     xSemaphoreTake(GPS_new, portMAX_DELAY);
+//     if (xSemaphoreTake(GPS_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+//       // Time in seconds keeps increasing after we get the NMEA sentence.
+//       // This estimate will lag real time due to transmission and parsing delays,
+//       // but the lag should be small and should also be consistent.
+//       float s = GPS.seconds + GPS.milliseconds / 1000. + GPS.secondsSinceTime();
+//       int m = GPS.minute;
+//       int h = GPS.hour;
+//       int d = GPS.day;
+//       // Adjust time and day forward to account for elapsed time.
+//       // This will break at month boundaries!!! Humans will have to cope with
+//       // April 31,32 etc.
+//       while (s > 60) {
+//         s -= 60;
+//         m++;
+//       }
+//       while (m > 60) {
+//         m -= 60;
+//         h++;
+//       }
+//       while (h > 24) {
+//         h -= 24;
+//         d++;
+//       }
+//     // ISO Standard Date Format, with leading zeros https://xkcd.com/1179/
+//     Serial.print("\nDate: ");
+//     Serial.print(GPS.year + 2000, DEC);
+//     Serial.print("-");
+//     if (GPS.month < 10)
+//       Serial.print("0");
+//     Serial.print(GPS.month, DEC);
+//     Serial.print("-");
+//     if (d < 10)
+//       Serial.print("0");
+//     Serial.print(d, DEC);
+//     Serial.print("   Time: ");
+//     if (h < 10)
+//       Serial.print("0");
+//     Serial.print(h, DEC);
+//     Serial.print(':');
+//     if (m < 10)
+//       Serial.print("0");
+//     Serial.print(m, DEC);
+//     Serial.print(':');
+//     if (s < 10)
+//       Serial.print("0");
+//     Serial.println(s, 3);
+//     Serial.print("Fix: ");
+//     Serial.print((int)GPS.fix);
+//     Serial.print(" quality: ");
+//     Serial.println((int)GPS.fixquality);
+//     Serial.print("Time [s] since last fix: ");
+//     Serial.println(GPS.secondsSinceFix(), 3);
+//     Serial.print("    since last GPS time: ");
+//     Serial.println(GPS.secondsSinceTime(), 3);
+//     Serial.print("    since last GPS date: ");
+//     Serial.println(GPS.secondsSinceDate(), 3);
+//     if (GPS.fix) {
+//       Serial.print("Location: ");
+//       Serial.print(GPS.latitude, 4);
+//       Serial.print(GPS.lat);
+//       Serial.print(", ");
+//       Serial.print(GPS.longitude, 4);
+//       Serial.println(GPS.lon);
+//       Serial.print("Speed (knots): ");
+//       Serial.println(GPS.speed);
+//       Serial.print("Angle: ");
+//       Serial.println(GPS.angle);
+//       Serial.print("Altitude: ");
+//       Serial.println(GPS.altitude);
+//       Serial.print("Satellites: ");
+//       Serial.println((int)GPS.satellites);
+//     }
+//     xSemaphoreGive(GPS_mutex);
+//     xSemaphoreGive(Serial_mutex);
+//     vTaskDelay(2000 / portTICK_PERIOD_MS);
+//   }
+// }
 #pragma endregion
 #pragma region LED/Heartbeat
 // LED
@@ -232,8 +224,9 @@ void toggleLED(void *parameter) {
     //analogWrite(led_pin, LOW);
     vTaskDelay(1750 / portTICK_PERIOD_MS);
 
-    if (xSemaphoreTake(Serial_mutex, portMAX_DELAY)) {
+    if (xSemaphoreTake(Serial_mutex, 0)) {
       Serial.println("Heartbeat <3");
+      xSemaphoreGive(Serial_mutex);
     } else {
       Serial.println("** Serial Locked **");
     }
@@ -456,7 +449,7 @@ void handleIMU085(void *parameter) {
     }
   }
 
-  if (xSemaphoreTake(Serial_mutex, portMAX_DELAY)) {
+  if (xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS )) {
     if (self_status.IMU085_connected) {
       setReports();
       Serial.println("IMU085 Startup /// [OK]");
@@ -475,7 +468,7 @@ void handleIMU085(void *parameter) {
     vTaskDelay(10 / portTICK_PERIOD_MS);
 
     if (bno08x.wasReset()) {
-      xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+      xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS );
       Serial.print("sensor was reset ");
       setReports();
       xSemaphoreGive(Serial_mutex);
@@ -804,7 +797,8 @@ void setup() {
   #pragma region Setup Serial
   // Serial
   Serial_mutex = xSemaphoreCreateMutex();
-  xSemaphoreTake(Serial_mutex, portMAX_DELAY);
+
+  xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS );
   Serial.begin(115200);
   Serial.println("Startup...");
   xSemaphoreGive(Serial_mutex);
@@ -864,7 +858,6 @@ void setup() {
   // GPS Tasks
   GPS_mutex = xSemaphoreCreateMutex();
   GPS_new = xSemaphoreCreateBinary();
-  //xSemaphoreTake(GPS_new, portMAX_DELAY);
   xTaskCreatePinnedToCore(  //  "Update GPS"
     updateGPS,    // Function to be called
     "Update GPS", // Name of task
@@ -876,14 +869,14 @@ void setup() {
 
   
   Serial.println("GPS Task Started");
-  xTaskCreatePinnedToCore(  // "Print GPS"
-    printGPS,    // Function to be called
-    "Print GPS", // Name of task
-    1024,         // Stack size (bytes in ESP32, words in FreeRTOS)
-    NULL,         // Parameter to pass to function
-    1,            // Task priority (0 to configMAX_PRIORITIES - 1)
-    NULL,         // Task handle
-    app_cpu);     // Run on one core for demo purposes (ESP32 only)
+  // xTaskCreatePinnedToCore(  // "Print GPS"
+  //   printGPS,    // Function to be called
+  //   "Print GPS", // Name of task
+  //   1024,         // Stack size (bytes in ESP32, words in FreeRTOS)
+  //   NULL,         // Parameter to pass to function
+  //   1,            // Task priority (0 to configMAX_PRIORITIES - 1)
+  //   NULL,         // Task handle
+  //   app_cpu);     // Run on one core for demo purposes (ESP32 only)
 
  
 
