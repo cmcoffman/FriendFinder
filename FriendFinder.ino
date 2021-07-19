@@ -234,11 +234,11 @@ void toggleLED(void *parameter)
     if (xSemaphoreTake(Serial_mutex, 0))
     {
       Serial.println("Heartbeat <3");
-      Serial.println("IMU_055/085(reports) / GPS / Status");
-      Serial.print(self_status.IMU055_connected);
+      Serial.println("[IMU_085 | (..reports) | GPS | Radio] 1=Good 0 = Bad");
       Serial.print(self_status.IMU085_connected);
       Serial.print(self_status.IMU085_reports_set);
-      Serial.println(self_status.GPS_connected);
+      Serial.print(self_status.GPS_connected);
+      Serial.println(self_status.RFM95_connected);
       xSemaphoreGive(Serial_mutex);
     }
     else
@@ -351,10 +351,12 @@ void handleIMU085(void *parameter)
         if (!setReports())
         {
           self_status.IMU085_reports_set = false;
+          Serial.println("IMU_085 Reports Not Set");
         }
         else
         {
           self_status.IMU085_reports_set = true;
+          Serial.println("IMU_085 Reports Set");
         }
         Serial.println("IMU_085 Connected");
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -598,11 +600,23 @@ TFT_eSprite MSD_screen = TFT_eSprite(&tft);
 static SemaphoreHandle_t TFT_mutex; // Locks IMU object
 static SemaphoreHandle_t TFT_new;   //Signals NEW IMU data
 
+void lineBlank()
+{
+  MSD_screen.fillRect(MSD_screen.getCursorX(),
+                      MSD_screen.getCursorY(),
+                      MSD_screen.width(),
+                      MSD_screen.fontHeight(),
+                      MSD_screen.textbgcolor);
+}
+
+// Task
+TaskHandle_t task_TFT;
 void handleTFT(void *parameter)
 {
   Serial.println("Display Startup");
 
   // TFT Display Setup
+
   pinMode(TFT_BL, OUTPUT);
   tft.init();
   tft.setRotation(1);
@@ -616,8 +630,6 @@ void handleTFT(void *parameter)
 
   while (1)
   {
-    // Refresh Rate
-    vTaskDelay(16 / portTICK_PERIOD_MS); // 16 ms should be ~60 fps
     // Line 1 (Time)
     MSD_screen.setCursor(0, 0);
     MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
@@ -680,10 +692,11 @@ void handleTFT(void *parameter)
     }
     else
     {
-    if (xSemaphoreTake(IMU085_new, 0))
-    {
+      if (xSemaphoreTake(IMU085_new, 0))
+      {
         if (xSemaphoreTake(IMU085_mutex, (TickType_t)10 / portTICK_PERIOD_MS) == pdTRUE)
         {
+          lineBlank();
           MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
           MSD_screen.print(F("YPR // "));
           MSD_screen.print(self_status.IMU085_rotationVector_yaw);
@@ -693,14 +706,79 @@ void handleTFT(void *parameter)
           MSD_screen.print(self_status.IMU085_rotationVector_roll);
           xSemaphoreGive(IMU085_mutex);
         }
-    }
+      }
     }
     MSD_screen.pushSprite(0, 0);
+
+    // Line 4 (Button/Knob) [BNO085]
+    MSD_screen.setCursor(0, 48);
+    lineBlank();
+    MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+    MSD_screen.print(F("KNOB // "));
+    MSD_screen.print(self_status.knob_V);
+    MSD_screen.setCursor(13 * 8, MSD_screen.getCursorY()); // move over 12 characters
+    MSD_screen.print(F(" | "));
+    MSD_screen.print(self_status.knob_mode);
   }
 }
 
 #pragma endregion
 
+#pragma region Knob
+#define KNOB_PIN 39   // Labelled "A3" on esp32 feather
+#define KNOB_MAX 4095 // (12-bit ADC has this as max)
+#define KNOB_MODES 3  // How many sections to break it into?
+
+void handleKnob(void *parameter)
+{
+  int knob_V;
+  int knob_mode;
+  while (1)
+  {
+    knob_V = analogRead(KNOB_PIN);
+    knob_mode = map(knob_V, 0, 4095, 0, KNOB_MODES - 1);
+    self_status.knob_V = knob_V;
+    self_status.knob_mode = knob_mode;
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+  }
+}
+#pragma endregion
+
+#pragma region Controller // Controls power
+void handleControl(void *parameter)
+{
+  while (1)
+  {
+    // How often to check?
+    vTaskDelay(20 / portTICK_PERIOD_MS);
+    // Check if Display should be on
+    // On reset display should come on for a few seconds
+    if (millis() <= 10000)
+    {
+      self_status.display_enable = true;
+    }
+    else
+    {
+      // Do I need to turn the display off?
+      if (self_status.knob_mode >= 2 & self_status.display_enable)
+      {
+        self_status.display_enable = false;
+        vTaskSuspend(task_TFT);    // Suspend the TFT_task
+        tft.fillScreen(TFT_BLACK); // Blank Screen
+        digitalWrite(TFT_BL, LOW); //Backlight Off
+      }
+      // Do I need to turn the display on?
+      if (self_status.knob_mode < 2 & !self_status.display_enable)
+      {
+        digitalWrite(TFT_BL, HIGH); //Backlight On
+        vTaskResume(task_TFT);      // Resume the TFT_task
+        self_status.display_enable = true;
+      }
+    }
+  }
+}
+
+#pragma endregion
 void setup()
 {
 #pragma region Setup Serial
@@ -795,7 +873,7 @@ void setup()
 #pragma endregion
 #pragma region IMU Setup
   // IMU Tasks
-    IMU085_mutex = xSemaphoreCreateMutex();
+  IMU085_mutex = xSemaphoreCreateMutex();
   IMU085_new = xSemaphoreCreateBinary();
   xTaskCreatePinnedToCore( // "Handle IMU085"
       handleIMU085,        // Function to be called
@@ -809,7 +887,7 @@ void setup()
   Serial.println("IMU085 Task Started");
 #pragma endregion
 #pragma region TFT Setup
-  // TFT Tasks
+  // TFT Task
   TFT_mutex = xSemaphoreCreateMutex();
   TFT_new = xSemaphoreCreateBinary();
   xTaskCreatePinnedToCore( // "Handle TFT"
@@ -818,11 +896,36 @@ void setup()
       10000,               // Stack size (bytes in ESP32, words in FreeRTOS)
       NULL,                // Parameter to pass to function
       1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
-      NULL,                // Task handle
+      &task_TFT,           // Task handle
       app_cpu);            // Run on one core for demo purposes (ESP32 only)
 
   Serial.println("TFT Task Started");
 #pragma endregion
+#pragma region Knob / Buttons
+  xTaskCreatePinnedToCore( // "Handle TFT"
+      handleKnob,          // Function to be called
+      "Handle Knob",       // Name of task
+      10000,               // Stack size (bytes in ESP32, words in FreeRTOS)
+      NULL,                // Parameter to pass to function
+      1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
+      NULL,                // Task handle
+      app_cpu);            // Run on one core for demo purposes (ESP32 only)
+
+  Serial.println("TFT Task Started");
+  #pragma endregion
+
+#pragma region Controller
+  xTaskCreatePinnedToCore( // "Handle TFT"
+      handleControl,          // Function to be called
+      "Controller",       // Name of task
+      10000,               // Stack size (bytes in ESP32, words in FreeRTOS)
+      NULL,                // Parameter to pass to function
+      1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
+      NULL,                // Task handle
+      app_cpu);            // Run on one core for demo purposes (ESP32 only)
+
+  Serial.println("Controller Task Started");
+  #pragma endregion
 
   Serial.println("All tasks created");
 }

@@ -16,7 +16,14 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": false,
                 "path": [
-
+                    "C:\\Users\\Clayton.000\\AppData\\Local\\Arduino15\\packages\\esp32\\tools",
+                    "C:\\Users\\Clayton.000\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.6",
+                    "${workspaceRoot}",
+                    "C:\\Users\\Clayton.000\\Documents\\Arduino\\libraries",
+                    "${workspaceFolder}",
+                    "C:\\Program Files (x86)\\Arduino\\libraries",
+                    "C:\\Users\\Clayton.000\\AppData\\Local\\Arduino15\\packages\\adafruit\\hardware\\samd\\1.6.3",
+                    "C:\\Users\\Clayton.000\\AppData\\Local\\Arduino15\\packages\\adafruit\\tools"
                 ]
             },
             "compilerPath": "C:\\Program Files (x86)\\Arduino\\hardware\\tools\\avr\\bin\\avr-gcc.exe",
