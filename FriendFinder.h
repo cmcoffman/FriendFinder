@@ -23,11 +23,6 @@ struct ffStatus {
   float orientation_y;  // Consensus data
   float orientation_z;  // Consensus data
   
-  bool  IMU055_connected = false;
-  float IMU055_orientation_x;  // BNO055 data
-  float IMU055_orientation_y;  // BNO055 data
-  float IMU055_orientation_z;  // BNO055 data
-  
   bool  IMU085_connected = false;
   bool  IMU085_reports_set = false;
   float IMU085_orientation_x;  // BNO085 data
