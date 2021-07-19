@@ -39,6 +39,17 @@ struct ffStatus {
   float IMU085_rotationVector_roll;
 
 
+  // Radio
+  bool RFM95_connected = false;
+
+  // Knob
+  int knob_V;
+  int knob_mode;
+
+  // Display
+  bool display_enable = false;
+
+  // Battery
   float battery_V;
 };
 
