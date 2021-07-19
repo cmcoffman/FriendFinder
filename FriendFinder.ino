@@ -249,75 +249,6 @@ void toggleLED(void *parameter)
 }
 #pragma endregion
 
-#pragma region IMU055
-// IMU
-Adafruit_BNO055 IMU055 = Adafruit_BNO055(55, 0x28); // id, address
-bool IMU055_connected = false;
-static SemaphoreHandle_t IMU055_mutex; // Locks IMU object
-static SemaphoreHandle_t IMU055_new;   //Signals NEW IMU data
-
-void handleIMU055(void *parameter)
-{
-  uint16_t BNO055_samplerate_delay_ms = 100;                                     // how long between readings (dbl check w/ hardware)
-  TickType_t xLastWakeTime;                                                      // object to store execution timing
-  const TickType_t xFrequency = BNO055_samplerate_delay_ms / portTICK_PERIOD_MS; // how many ticks between updates
-
-  sensors_event_t orientationData, linearAccelData;
-  double xPos = 0, yPos = 0, headingVel = 0;
-  uint16_t PRINT_DELAY_MS = 500; // how often to print the data
-  //velocity = accel*dt (dt in seconds)
-  //position = 0.5*accel*dt^2
-  double ACCEL_VEL_TRANSITION = (double)(BNO055_samplerate_delay_ms) / 1000.0;
-  double ACCEL_POS_TRANSITION = 0.5 * ACCEL_VEL_TRANSITION * ACCEL_VEL_TRANSITION;
-  double DEG_2_RAD = 0.01745329251; //trig functions require radians, BNO055 outputs degrees
-  uint16_t printCount = 0;          //counter to avoid printing every 10MS sample
-
-  while (1)
-  {
-    // IMU085 Not Connected - startup/reinit
-    if (!self_status.IMU055_connected)
-    {
-      if (!IMU055.begin())
-      {
-        self_status.IMU055_connected = false;
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-      }
-      else
-      {
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-        self_status.IMU055_connected = true;
-      }
-    }
-    else
-    {
-      unsigned long tStart = micros();
-      xLastWakeTime = xTaskGetTickCount();
-      IMU055.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
-      //  bno.getEvent(&angVelData, Adafruit_BNO055::VECTOR_GYROSCOPE);
-      IMU055.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL);
-
-      xPos = xPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.x;
-      yPos = yPos + ACCEL_POS_TRANSITION * linearAccelData.acceleration.y;
-
-      // velocity of sensor in the direction it's facing
-      headingVel = ACCEL_VEL_TRANSITION * linearAccelData.acceleration.x / cos(DEG_2_RAD * orientationData.orientation.x);
-
-      // Store Data
-      if (xSemaphoreTake(IMU055_mutex, (TickType_t)10 / portTICK_PERIOD_MS) == pdTRUE)
-      {
-        self_status.IMU055_orientation_x = orientationData.orientation.x;
-        self_status.IMU055_orientation_y = orientationData.orientation.y;
-        self_status.IMU055_orientation_z = orientationData.orientation.z;
-        xSemaphoreGive(IMU055_mutex);
-      }
-
-      // Wait until next cycle
-      //vTaskDelayUntil(&xLastWakeTime, xFrequency);
-      //vTaskDelay(BNO055_samplerate_delay_ms / portTICK_PERIOD_MS);
-    }
-  }
-}
-#pragma endregion
 #pragma region IMU085
 #define BNO08X_INT 9
 #define BNO08X_RESET -1 // set to -1 for I2C or UART
@@ -864,20 +795,7 @@ void setup()
 #pragma endregion
 #pragma region IMU Setup
   // IMU Tasks
-  IMU055_mutex = xSemaphoreCreateMutex();
-  IMU055_new = xSemaphoreCreateBinary();
-
-  // xTaskCreatePinnedToCore( // "Handle IMU055"
-  //     handleIMU055,        // Function to be called
-  //     "Handle IMU055",     // Name of task
-  //     2048,                // Stack size (bytes in ESP32, words in FreeRTOS)
-  //     NULL,                // Parameter to pass to function
-  //     1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
-  //     NULL,                // Task handle
-  //     app_cpu);            // Run on one core for demo purposes (ESP32 only)
-
-  // Serial.println("IMU055 Task Started");
-  IMU085_mutex = xSemaphoreCreateMutex();
+    IMU085_mutex = xSemaphoreCreateMutex();
   IMU085_new = xSemaphoreCreateBinary();
   xTaskCreatePinnedToCore( // "Handle IMU085"
       handleIMU085,        // Function to be called
