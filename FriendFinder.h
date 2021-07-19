@@ -49,6 +49,9 @@ struct ffStatus {
   // Display
   bool display_enable = false;
 
+  // LED 
+  bool LED_enable = true;
+
   // Battery
   float battery_V;
 };

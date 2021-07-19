@@ -129,7 +129,7 @@ void updateGPS(void *parameter)
           xSemaphoreGive(GPS_new);
         }
       }
-      xSemaphoreGive(GPS_mutex);
+
     }
   }
 }
@@ -218,6 +218,7 @@ void updateGPS(void *parameter)
 #pragma region LED / Heartbeat
 // LED
 static const int led_pin = LED_BUILTIN;
+TaskHandle_t task_LED;
 void toggleLED(void *parameter)
 {
   while (1)
@@ -770,10 +771,28 @@ void handleControl(void *parameter)
       // Do I need to turn the display on?
       if (self_status.knob_mode < 2 & !self_status.display_enable)
       {
+        tft.fillScreen(TFT_BLACK); // Blank Screen
         digitalWrite(TFT_BL, HIGH); //Backlight On
         vTaskResume(task_TFT);      // Resume the TFT_task
         self_status.display_enable = true;
       }
+    }
+
+    // Check if LED should be on
+    // On reset display should come on for a few seconds
+
+    // Do I need to turn the LED?
+    if (self_status.knob_mode >= 2 & self_status.LED_enable)
+    {
+      self_status.LED_enable = false;
+      vTaskSuspend(task_LED);    // Suspend the TFT_task
+      digitalWrite(led_pin, LOW); //LED Off
+    }
+    // Do I need to turn the display on?
+    if (self_status.knob_mode < 2 & !self_status.LED_enable)
+    {
+      vTaskResume(task_LED);      // Resume the TFT_task
+      self_status.LED_enable = true;
     }
   }
 }
@@ -817,7 +836,7 @@ void setup()
       1024,                // Stack size (bytes in ESP32, words in FreeRTOS)
       NULL,                // Parameter to pass to function
       1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
-      NULL,                // Task handle
+      &task_LED,           // Task handle
       app_cpu);            // Run on one core for demo purposes (ESP32 only)
 
   Serial.println("LED Task Started");
@@ -912,12 +931,12 @@ void setup()
       app_cpu);            // Run on one core for demo purposes (ESP32 only)
 
   Serial.println("TFT Task Started");
-  #pragma endregion
+#pragma endregion
 
 #pragma region Controller
   xTaskCreatePinnedToCore( // "Handle TFT"
-      handleControl,          // Function to be called
-      "Controller",       // Name of task
+      handleControl,       // Function to be called
+      "Controller",        // Name of task
       10000,               // Stack size (bytes in ESP32, words in FreeRTOS)
       NULL,                // Parameter to pass to function
       1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
@@ -925,7 +944,7 @@ void setup()
       app_cpu);            // Run on one core for demo purposes (ESP32 only)
 
   Serial.println("Controller Task Started");
-  #pragma endregion
+#pragma endregion
 
   Serial.println("All tasks created");
 }
