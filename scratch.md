@@ -55,6 +55,8 @@ xSemaphoreTake(Serial_mutex, portMAX_DELAY);
 xSemaphoreTake(Serial_mutex, portMAX_DELAY);
 if (xSemaphoreTake( Serial_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
 
+if (eTaskGetState(task2_tid) != eSuspended) {
+
 
 // IMU_085 
 void printActivity(uint8_t activity_id)

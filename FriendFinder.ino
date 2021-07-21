@@ -35,68 +35,88 @@ static SemaphoreHandle_t Serial_mutex; // Locks Serial object
 */
 
 #pragma endregion
+
 #pragma region OTA Update
 // OTA Update
-const char *ssid = "***REMOVED***";
-const char *password = "***REMOVED***";
+
+TaskHandle_t task_OTA;
 
 void handleOTA(void *parameter)
 {
-  // 'Setup'
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  while (WiFi.waitForConnectResult() != WL_CONNECTED)
-  {
-    Serial.println("Connection Failed! Rebooting...");
-    delay(5000);
-    ESP.restart();
-  }
-  ArduinoOTA.setHostname("FFProto");
+  const char *ssid = "***REMOVED***";
+  const char *password = "***REMOVED***";
 
-  ArduinoOTA
-      .onStart([]() {
-        String type;
-        if (ArduinoOTA.getCommand() == U_FLASH)
-          type = "sketch";
-        else // U_SPIFFS
-          type = "filesystem";
-
-        // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS
-        // using SPIFFS.end()
-        Serial.println("Start updating " + type);
-      })
-      .onEnd([]() {
-        Serial.println("\nEnd");
-      })
-      .onProgress([](unsigned int progress, unsigned int total) {
-        Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-      })
-      .onError([](ota_error_t error) {
-        Serial.printf("Error[%u]: ", error);
-        if (error == OTA_AUTH_ERROR)
-          Serial.println("Auth Failed");
-        else if (error == OTA_BEGIN_ERROR)
-          Serial.println("Begin Failed");
-        else if (error == OTA_CONNECT_ERROR)
-          Serial.println("Connect Failed");
-        else if (error == OTA_RECEIVE_ERROR)
-          Serial.println("Receive Failed");
-        else if (error == OTA_END_ERROR)
-          Serial.println("End Failed");
-      });
-
-  ArduinoOTA.begin();
-
-  Serial.println("OTA Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-
-  // 'Loop'
   while (1)
   {
-    ArduinoOTA.handle();
-    taskYIELD();
-  }
+    // Suspend self if should be off
+    //if (!self_status.OTA_enable) vTaskSuspend( NULL );
+    // Try to Connect if not connected
+    if (!WiFi.isConnected())
+    {
+      self_status.xTicks_When_Wifi_Disconnected = xTaskGetTickCount(); // now
+      while (!WiFi.isConnected())
+      {
+        WiFi.mode(WIFI_STA);
+        Serial.println("WiFi /// [Connecting...]");
+        WiFi.begin(ssid, password);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        while (WiFi.waitForConnectResult() != WL_CONNECTED)
+        {
+          Serial.println("WiFi /// [..retry connection..]");
+          WiFi.reconnect();
+          vTaskDelay(5000 / portTICK_PERIOD_MS);
+        }
+      }
+      self_status.xTicks_When_Wifi_Disconnected = 0;
+      ArduinoOTA.setHostname("FFProto");
+      Serial.println("WiFi /// [..CONNECTED..]");
+      Serial.print("IP address: ");
+      Serial.println(WiFi.localIP());
+
+      // Start OTA
+      ArduinoOTA
+          .onStart([]() {
+            String type;
+            if (ArduinoOTA.getCommand() == U_FLASH)
+              type = "sketch";
+            else // U_SPIFFS
+              type = "filesystem";
+
+            // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS
+            // using SPIFFS.end()
+            Serial.println("Start updating " + type);
+          })
+          .onEnd([]() {
+            Serial.println("\nEnd");
+          })
+          .onProgress([](unsigned int progress, unsigned int total) {
+            Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+          })
+          .onError([](ota_error_t error) {
+            Serial.printf("Error[%u]: ", error);
+            if (error == OTA_AUTH_ERROR)
+              Serial.println("Auth Failed");
+            else if (error == OTA_BEGIN_ERROR)
+              Serial.println("Begin Failed");
+            else if (error == OTA_CONNECT_ERROR)
+              Serial.println("Connect Failed");
+            else if (error == OTA_RECEIVE_ERROR)
+              Serial.println("Receive Failed");
+            else if (error == OTA_END_ERROR)
+              Serial.println("End Failed");
+          });
+
+      ArduinoOTA.begin();
+      Serial.println("OTA Ready");
+    }
+
+    // Handle OTA if connected
+    if (WiFi.isConnected())
+    {
+      ArduinoOTA.handle();
+      taskYIELD();
+    }
+  } // end loop
 }
 #pragma endregion
 
@@ -115,21 +135,23 @@ void updateGPS(void *parameter)
     char c = GPS.read();
     if (GPS.newNMEAreceived())
     {
-      if (GPS.parse(GPS.lastNMEA()))
-      { // sets newNMEAreceived() = false
-        if (xSemaphoreTake(GPS_mutex, (TickType_t)10 / portTICK_PERIOD_MS))
+      if (GPS.parse(GPS.lastNMEA())) // sets newNMEAreceived() = false
+      {
+        // one byte date needs no semaphore
+        self_status.GPS_fix = GPS.fix;
+        self_status.fixquality = GPS.fixquality;
+        self_status.fixquality_3d = GPS.fixquality_3d;
+        self_status.satellites = GPS.satellites;
+        if (xSemaphoreTake(GPS_mutex, 0))
         {
-          self_status.fixquality = GPS.fixquality;
-          self_status.fixquality_3d = GPS.fixquality_3d;
           self_status.latitude_fixed = GPS.latitude_fixed;
           self_status.longitude_fixed = GPS.longitude_fixed;
           self_status.latitude = GPS.latitude_fixed / 10000000.0;
           self_status.longitude = GPS.longitude_fixed / 10000000.0;
           xSemaphoreGive(GPS_mutex);
-          xSemaphoreGive(GPS_new);
         }
+        xSemaphoreGive(GPS_new);
       }
-
     }
   }
 }
@@ -634,15 +656,16 @@ void handleTFT(void *parameter)
     // Line 1 (Time)
     MSD_screen.setCursor(0, 0);
     MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    MSD_screen.print(F("TIME // [UNDEFINED]"));
+    MSD_screen.print(F("TIME // [ UNDEFINED ]"));
     MSD_screen.pushSprite(0, 0);
 
     // Line 2 (Space)
     MSD_screen.setCursor(0, 16);
     if (!self_status.GPS_connected)
     { // GPS Not Connected
-      MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
-      MSD_screen.print(F("SPACE // [FAIL]"));
+      MSD_screen.setTextColor(FFPAL_PURPLE, TFT_BLACK);
+      lineBlank();
+      MSD_screen.print(F("SPACE // [[ FAIL ]]"));
     }
     else
     {
@@ -650,26 +673,33 @@ void handleTFT(void *parameter)
       { // ...but no fix
         if (self_status.GPS_naive)
         { // and GPS has never had a fix
-          MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
-          MSD_screen.print(F("SPACE // [INVALID]"));
+          MSD_screen.setTextColor(FFPAL_BLUE, TFT_BLACK);
+          lineBlank();
+          MSD_screen.print(F("SPACE // [ INVALID ] { "));
+          MSD_screen.print(self_status.satellites);
+          MSD_screen.print(F(" }"));
         }
         else
         { // GPS has had a fix before
-          MSD_screen.setTextColor(TFT_RED, TFT_BLACK);
-          MSD_screen.print(F("SPACE // [INVALID .. LOST]"));
+          MSD_screen.setTextColor(FFPAL_PURPLE, TFT_BLACK);
+          lineBlank();
+          MSD_screen.print(F("SPACE // [ LOST ] { "));
+          MSD_screen.print(self_status.satellites);
+          MSD_screen.print(F(" }"));
         }
       }
       else
       { // GPS Connected with Fix
         // Try to store data for 1 ms
-        if (xSemaphoreTake(status_mutex, (TickType_t)10 / portTICK_PERIOD_MS) == pdTRUE)
+        if (xSemaphoreTake(GPS_mutex, 0))
         {
           if (self_status.GPS_naive)
             self_status.GPS_naive = false; // no longer naive
           float lat = self_status.latitude;
           float lon = self_status.longitude;
-          xSemaphoreGive(status_mutex);
+          xSemaphoreGive(GPS_mutex);
           MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+          lineBlank();
           MSD_screen.print(F("SPACE // "));
           MSD_screen.print(lat, 7);
           MSD_screen.print(F(", "));
@@ -711,15 +741,54 @@ void handleTFT(void *parameter)
     }
     MSD_screen.pushSprite(0, 0);
 
-    // Line 4 (Button/Knob) [BNO085]
+    // Line 4 (Button/Knob/ MODE) [BNO085]
     MSD_screen.setCursor(0, 48);
     lineBlank();
     MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
-    MSD_screen.print(F("KNOB // "));
+    MSD_screen.print(F("UI // ["));
     MSD_screen.print(self_status.knob_V);
-    MSD_screen.setCursor(13 * 8, MSD_screen.getCursorY()); // move over 12 characters
-    MSD_screen.print(F(" | "));
+    MSD_screen.print(F("|"));
     MSD_screen.print(self_status.knob_mode);
+    MSD_screen.print(F("]"));
+    MSD_screen.pushSprite(0, 0);
+
+    // OTA/Wifi
+    MSD_screen.setCursor(0, 64);
+    lineBlank();
+    // If OTA task is suspended...
+    if (eTaskGetState(task_OTA) == eSuspended)
+    {
+      // Did it time out?
+      if (self_status.OTA_timeout)
+      {
+        MSD_screen.setTextColor(TFT_PURPLE, TFT_BLACK);
+        MSD_screen.print(F("OTA // [[ Timeout ]]"));
+      }
+      else
+      // If its off but not timeout
+      {
+        MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
+        MSD_screen.print(F("OTA // [[ OFF ]]"));
+      }
+    }
+    else
+    {
+      // If OTA Task is Running...
+      // If Wifi is connected
+      if (WiFi.isConnected())
+      {
+        MSD_screen.setTextColor(FFPAL_GREEN, TFT_BLACK);
+        MSD_screen.print(F("OTA // "));
+        MSD_screen.print(WiFi.localIP());
+      }
+      else
+      // wifi not connected
+      {
+        MSD_screen.setTextColor(FFPAL_BLUE, TFT_BLACK);
+        MSD_screen.print(F("OTA // ..CONNECTING.."));
+      }
+    }
+    MSD_screen.pushSprite(0, 0);
   }
 }
 
@@ -761,7 +830,7 @@ void handleControl(void *parameter)
     else
     {
       // Do I need to turn the display off?
-      if (self_status.knob_mode >= 2 & self_status.display_enable)
+      if (self_status.knob_mode >= 2 && self_status.display_enable)
       {
         self_status.display_enable = false;
         vTaskSuspend(task_TFT);    // Suspend the TFT_task
@@ -769,12 +838,12 @@ void handleControl(void *parameter)
         digitalWrite(TFT_BL, LOW); //Backlight Off
       }
       // Do I need to turn the display on?
-      if (self_status.knob_mode < 2 & !self_status.display_enable)
+      if (self_status.knob_mode < 2 && !self_status.display_enable)
       {
-        tft.fillScreen(TFT_BLACK); // Blank Screen
+        self_status.display_enable = true;
+        tft.fillScreen(TFT_BLACK);  // Blank Screen
         digitalWrite(TFT_BL, HIGH); //Backlight On
         vTaskResume(task_TFT);      // Resume the TFT_task
-        self_status.display_enable = true;
       }
     }
 
@@ -782,19 +851,63 @@ void handleControl(void *parameter)
     // On reset display should come on for a few seconds
 
     // Do I need to turn the LED?
-    if (self_status.knob_mode >= 2 & self_status.LED_enable)
+    if (self_status.knob_mode >= 2 && self_status.LED_enable)
     {
       self_status.LED_enable = false;
-      vTaskSuspend(task_LED);    // Suspend the TFT_task
+      vTaskSuspend(task_LED);     // Suspend the TFT_task
       digitalWrite(led_pin, LOW); //LED Off
     }
     // Do I need to turn the display on?
-    if (self_status.knob_mode < 2 & !self_status.LED_enable)
+    if (self_status.knob_mode < 2 && !self_status.LED_enable)
     {
-      vTaskResume(task_LED);      // Resume the TFT_task
+      vTaskResume(task_LED); // Resume the TFT_task
       self_status.LED_enable = true;
     }
-  }
+
+    // Handle OTA
+    if (self_status.knob_mode == 0)
+      self_status.OTA_enable = true;
+    if (self_status.knob_mode != 0)
+      self_status.OTA_enable = false;
+    // OTA should come on for 30s at reset for safety
+    if (millis() < 30000)
+    {
+      self_status.OTA_enable = true;
+      self_status.OTA_timeout = false;
+    }
+
+    // OTA should disable if cant connect for 60 seconds
+    //  Task is running as it should
+    if (eTaskGetState(task_OTA) != eSuspended && self_status.OTA_enable == true)
+    {
+      // but wifi is not connected
+      if (!WiFi.isConnected())
+        // and its been disconnected for > 60 seconds
+        if ((xTaskGetTickCount() - self_status.xTicks_When_Wifi_Disconnected) > pdMS_TO_TICKS(60000))
+        {
+          // Disable it (or rather set it up to be disabled)
+          self_status.OTA_enable = false;
+          self_status.OTA_timeout = true;
+        }
+    }
+
+    // OTA Task is running but should be stopped
+    if (eTaskGetState(task_OTA) != eSuspended && self_status.OTA_enable == false)
+    {
+      vTaskSuspend(task_OTA);      // Suspend the OTA task
+      WiFi.disconnect(true, true); // Disconnect the wifi
+      //WiFi.mode(WIFI_OFF);         // Turn off the radio
+    }
+
+    // OTA Task is suspended but should be resumed
+    if (eTaskGetState(task_OTA) == eSuspended && self_status.OTA_enable == true)
+    {
+      self_status.xTicks_When_Wifi_Disconnected = 0;
+      self_status.OTA_timeout = false;
+      vTaskResume(task_OTA); // Resume the OTA task
+    }
+
+  } // end task loop
 }
 
 #pragma endregion
@@ -821,7 +934,7 @@ void setup()
       2048,                // Stack size (bytes in ESP32, words in FreeRTOS)
       NULL,                // Parameter to pass to function
       1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
-      NULL,                // Task handle
+      &task_OTA,           // Task handle
       app_cpu);            // Run on one core for demo purposes (ESP32 only)
 
   Serial.println("OTA Task Started");
@@ -830,16 +943,16 @@ void setup()
   // Configure LED
   pinMode(led_pin, OUTPUT);
   // LED Task
-  xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
-      toggleLED,           // Function to be called
-      "Toggle LED",        // Name of task
-      1024,                // Stack size (bytes in ESP32, words in FreeRTOS)
-      NULL,                // Parameter to pass to function
-      1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
-      &task_LED,           // Task handle
-      app_cpu);            // Run on one core for demo purposes (ESP32 only)
+  // xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
+  //     toggleLED,           // Function to be called
+  //     "Toggle LED",        // Name of task
+  //     1024,                // Stack size (bytes in ESP32, words in FreeRTOS)
+  //     NULL,                // Parameter to pass to function
+  //     1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
+  //     &task_LED,           // Task handle
+  //     app_cpu);            // Run on one core for demo purposes (ESP32 only)
 
-  Serial.println("LED Task Started");
+  // Serial.println("LED Task Started");
 #pragma endregion
 #pragma region GPS Setup
   // Setup GPS
@@ -920,7 +1033,7 @@ void setup()
 
   Serial.println("TFT Task Started");
 #pragma endregion
-#pragma region Knob / Buttons
+#pragma region Knob / Buttons Setup
   xTaskCreatePinnedToCore( // "Handle TFT"
       handleKnob,          // Function to be called
       "Handle Knob",       // Name of task
@@ -932,8 +1045,7 @@ void setup()
 
   Serial.println("TFT Task Started");
 #pragma endregion
-
-#pragma region Controller
+#pragma region Controller Setup
   xTaskCreatePinnedToCore( // "Handle TFT"
       handleControl,       // Function to be called
       "Controller",        // Name of task
