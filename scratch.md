@@ -97,3 +97,84 @@ void printActivity(uint8_t activity_id)
   Serial.print(activity_id);
   Serial.print(")");
 }
+
+// void printGPS(void *parameter) {
+//   while (1) {
+//     xSemaphoreTake(GPS_new, portMAX_DELAY);
+//     if (xSemaphoreTake(GPS_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
+//       // Time in seconds keeps increasing after we get the NMEA sentence.
+//       // This estimate will lag real time due to transmission and parsing delays,
+//       // but the lag should be small and should also be consistent.
+//       float s = GPS.seconds + GPS.milliseconds / 1000. + GPS.secondsSinceTime();
+//       int m = GPS.minute;
+//       int h = GPS.hour;
+//       int d = GPS.day;
+//       // Adjust time and day forward to account for elapsed time.
+//       // This will break at month boundaries!!! Humans will have to cope with
+//       // April 31,32 etc.
+//       while (s > 60) {
+//         s -= 60;
+//         m++;
+//       }
+//       while (m > 60) {
+//         m -= 60;
+//         h++;
+//       }
+//       while (h > 24) {
+//         h -= 24;
+//         d++;
+//       }
+//     // ISO Standard Date Format, with leading zeros https://xkcd.com/1179/
+//     Serial.print("\nDate: ");
+//     Serial.print(GPS.year + 2000, DEC);
+//     Serial.print("-");
+//     if (GPS.month < 10)
+//       Serial.print("0");
+//     Serial.print(GPS.month, DEC);
+//     Serial.print("-");
+//     if (d < 10)
+//       Serial.print("0");
+//     Serial.print(d, DEC);
+//     Serial.print("   Time: ");
+//     if (h < 10)
+//       Serial.print("0");
+//     Serial.print(h, DEC);
+//     Serial.print(':');
+//     if (m < 10)
+//       Serial.print("0");
+//     Serial.print(m, DEC);
+//     Serial.print(':');
+//     if (s < 10)
+//       Serial.print("0");
+//     Serial.println(s, 3);
+//     Serial.print("Fix: ");
+//     Serial.print((int)GPS.fix);
+//     Serial.print(" quality: ");
+//     Serial.println((int)GPS.fixquality);
+//     Serial.print("Time [s] since last fix: ");
+//     Serial.println(GPS.secondsSinceFix(), 3);
+//     Serial.print("    since last GPS time: ");
+//     Serial.println(GPS.secondsSinceTime(), 3);
+//     Serial.print("    since last GPS date: ");
+//     Serial.println(GPS.secondsSinceDate(), 3);
+//     if (GPS.fix) {
+//       Serial.print("Location: ");
+//       Serial.print(GPS.latitude, 4);
+//       Serial.print(GPS.lat);
+//       Serial.print(", ");
+//       Serial.print(GPS.longitude, 4);
+//       Serial.println(GPS.lon);
+//       Serial.print("Speed (knots): ");
+//       Serial.println(GPS.speed);
+//       Serial.print("Angle: ");
+//       Serial.println(GPS.angle);
+//       Serial.print("Altitude: ");
+//       Serial.println(GPS.altitude);
+//       Serial.print("Satellites: ");
+//       Serial.println((int)GPS.satellites);
+//     }
+//     xSemaphoreGive(GPS_mutex);
+//     xSemaphoreGive(Serial_mutex);
+//     vTaskDelay(2000 / portTICK_PERIOD_MS);
+//   }
+// }
