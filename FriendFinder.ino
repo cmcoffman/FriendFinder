@@ -3,6 +3,8 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
+#include <RHReliableDatagram.h>
+#include <RH_RF95.h>
 #include <SPI.h>
 #include "AF_240x135_ST7789.h" // Local config header
 #define USER_SETUP_LOADED      // forces use of local config header
@@ -22,8 +24,82 @@ static const BaseType_t app_cpu = 1;
 
 // FF Data
 ffStatus self_status;
-static SemaphoreHandle_t status_mutex; // Locks GPS object
+static SemaphoreHandle_t status_mutex; // Locks status_object do I need this?
 
+#pragma region Radio
+
+// RFM95W LORA Module
+#define MY_ADDRESS 2
+#define THEIR_ADDRESS 1
+#define RFM95_CS 33
+#define RFM95_RST 14
+#define RFM95_INT 21
+RH_RF95 driver(RFM95_CS, RFM95_INT);
+RHReliableDatagram manager(driver, MY_ADDRESS);
+
+void resetLORA()
+{
+  pinMode(RFM95_RST, OUTPUT);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(100);
+  //vTaskDelay(100 / portTICK_PERIOD_MS);
+  digitalWrite(RFM95_RST, LOW);
+  //vTaskDelay(10 / portTICK_PERIOD_MS);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  //vTaskDelay(10 / portTICK_PERIOD_MS);
+  delay(10);
+  //vTaskDelay(1000 / portTICK_PERIOD_MS);
+  delay(1000);
+}
+
+static SemaphoreHandle_t LORA_mutex;
+TaskHandle_t task_LORA;
+
+void handleLORA(void *parameter)
+{
+  while (1)
+  {
+    // Radio not connected - try to start
+    if (!self_status.LORA_connected)
+    {
+      Serial.println("Radio /// [ RESET ... ]");
+      resetLORA(); // hardware reset
+
+      if (!manager.init())
+      {
+        self_status.LORA_connected = false;
+        Serial.println("Radio /// [ .. FAIL .. ] { MANAGER }");
+      }
+      else
+      {
+        if (!driver.setFrequency(915.0))
+        {
+          self_status.LORA_connected = false;
+          Serial.println("Radio /// [ .. FAIL .. ] { FREQ SET }");
+        }
+        else
+        {
+          // You can set transmitter powers from 5 to 23 dBm:
+          driver.setTxPower(23, false);
+          driver.setCADTimeout(5000);
+          self_status.LORA_connected = true;
+          Serial.println("Radio /// [ OK ]");
+        }
+      }
+      vTaskDelay(2000 / portTICK_PERIOD_MS);
+    }
+
+    // Radio is connected
+    if (self_status.LORA_connected)
+    {
+      Serial.println("Radio /// [ (at your command) ]");
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+  }
+}
+
+#pragma endregion
 #pragma region Serial Output
 // Serial Terminal Output
 static SemaphoreHandle_t Serial_mutex; // Locks Serial object
@@ -38,7 +114,7 @@ static SemaphoreHandle_t Serial_mutex; // Locks Serial object
 
 #pragma region OTA Update
 // OTA Update
-
+#define OTA_STARTUP_TIME_MS 30000 // How long OTA turns on for at startup (used by controller)
 TaskHandle_t task_OTA;
 
 void handleOTA(void *parameter)
@@ -156,86 +232,7 @@ void updateGPS(void *parameter)
   }
 }
 
-// void printGPS(void *parameter) {
-//   while (1) {
-//     xSemaphoreTake(GPS_new, portMAX_DELAY);
-//     if (xSemaphoreTake(GPS_mutex, ( TickType_t ) 10 / portTICK_PERIOD_MS ) == pdTRUE) {
-//       // Time in seconds keeps increasing after we get the NMEA sentence.
-//       // This estimate will lag real time due to transmission and parsing delays,
-//       // but the lag should be small and should also be consistent.
-//       float s = GPS.seconds + GPS.milliseconds / 1000. + GPS.secondsSinceTime();
-//       int m = GPS.minute;
-//       int h = GPS.hour;
-//       int d = GPS.day;
-//       // Adjust time and day forward to account for elapsed time.
-//       // This will break at month boundaries!!! Humans will have to cope with
-//       // April 31,32 etc.
-//       while (s > 60) {
-//         s -= 60;
-//         m++;
-//       }
-//       while (m > 60) {
-//         m -= 60;
-//         h++;
-//       }
-//       while (h > 24) {
-//         h -= 24;
-//         d++;
-//       }
-//     // ISO Standard Date Format, with leading zeros https://xkcd.com/1179/
-//     Serial.print("\nDate: ");
-//     Serial.print(GPS.year + 2000, DEC);
-//     Serial.print("-");
-//     if (GPS.month < 10)
-//       Serial.print("0");
-//     Serial.print(GPS.month, DEC);
-//     Serial.print("-");
-//     if (d < 10)
-//       Serial.print("0");
-//     Serial.print(d, DEC);
-//     Serial.print("   Time: ");
-//     if (h < 10)
-//       Serial.print("0");
-//     Serial.print(h, DEC);
-//     Serial.print(':');
-//     if (m < 10)
-//       Serial.print("0");
-//     Serial.print(m, DEC);
-//     Serial.print(':');
-//     if (s < 10)
-//       Serial.print("0");
-//     Serial.println(s, 3);
-//     Serial.print("Fix: ");
-//     Serial.print((int)GPS.fix);
-//     Serial.print(" quality: ");
-//     Serial.println((int)GPS.fixquality);
-//     Serial.print("Time [s] since last fix: ");
-//     Serial.println(GPS.secondsSinceFix(), 3);
-//     Serial.print("    since last GPS time: ");
-//     Serial.println(GPS.secondsSinceTime(), 3);
-//     Serial.print("    since last GPS date: ");
-//     Serial.println(GPS.secondsSinceDate(), 3);
-//     if (GPS.fix) {
-//       Serial.print("Location: ");
-//       Serial.print(GPS.latitude, 4);
-//       Serial.print(GPS.lat);
-//       Serial.print(", ");
-//       Serial.print(GPS.longitude, 4);
-//       Serial.println(GPS.lon);
-//       Serial.print("Speed (knots): ");
-//       Serial.println(GPS.speed);
-//       Serial.print("Angle: ");
-//       Serial.println(GPS.angle);
-//       Serial.print("Altitude: ");
-//       Serial.println(GPS.altitude);
-//       Serial.print("Satellites: ");
-//       Serial.println((int)GPS.satellites);
-//     }
-//     xSemaphoreGive(GPS_mutex);
-//     xSemaphoreGive(Serial_mutex);
-//     vTaskDelay(2000 / portTICK_PERIOD_MS);
-//   }
-// }
+
 #pragma endregion
 #pragma region LED / Heartbeat
 // LED
@@ -247,11 +244,10 @@ void toggleLED(void *parameter)
   {
     // Analog write implementation is weird see:
     // https://github.com/espressif/arduino-esp32/issues/4
-    //analogWrite(led_pin, 50);
-    digitalWrite(led_pin, HIGH);
-    vTaskDelay(250 / portTICK_PERIOD_MS);
-    digitalWrite(led_pin, LOW);
-    //analogWrite(led_pin, LOW);
+
+    // digitalWrite(led_pin, HIGH);
+    // vTaskDelay(250 / portTICK_PERIOD_MS);
+    // digitalWrite(led_pin, LOW);
     vTaskDelay(1750 / portTICK_PERIOD_MS);
 
     if (xSemaphoreTake(Serial_mutex, 0))
@@ -261,7 +257,7 @@ void toggleLED(void *parameter)
       Serial.print(self_status.IMU085_connected);
       Serial.print(self_status.IMU085_reports_set);
       Serial.print(self_status.GPS_connected);
-      Serial.println(self_status.RFM95_connected);
+      Serial.println(self_status.LORA_connected);
       xSemaphoreGive(Serial_mutex);
     }
     else
@@ -610,6 +606,7 @@ void handleIMU085(void *parameter)
 
 #pragma region Display
 // Display
+#define TFT_STARTUP_TIME_MS 10000 // How long TFT turns on for at startup (used by controller)
 TFT_eSPI tft = TFT_eSPI();
 // Screen Buffers
 #define STATIC_LINES 5
@@ -714,34 +711,41 @@ void handleTFT(void *parameter)
     }
     MSD_screen.pushSprite(0, 0);
 
-    // Line 3 (POV) [BNO085]
+    // Line 3 (IMU) [BNO085]
     MSD_screen.setCursor(0, 32);
     if (!self_status.IMU085_connected)
     {
       MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      lineBlank();
       MSD_screen.print(F("YPR // ... [[NULL]] ..."));
+      MSD_screen.pushSprite(0, 0);
     }
     else
     {
-      if (xSemaphoreTake(IMU085_new, 0))
+      //if (xSemaphoreTake(IMU085_new, 0))
+      if (true)
       {
-        if (xSemaphoreTake(IMU085_mutex, (TickType_t)10 / portTICK_PERIOD_MS) == pdTRUE)
+        float yaw, pitch, roll;
+        if (xSemaphoreTake(IMU085_mutex, 0))
         {
-          lineBlank();
-          MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
-          MSD_screen.print(F("YPR // "));
-          MSD_screen.print(self_status.IMU085_rotationVector_yaw);
-          MSD_screen.print(F(", "));
-          MSD_screen.print(self_status.IMU085_rotationVector_pitch);
-          MSD_screen.print(F(", "));
-          MSD_screen.print(self_status.IMU085_rotationVector_roll);
+          yaw = self_status.IMU085_rotationVector_yaw;
+          pitch = self_status.IMU085_rotationVector_pitch;
+          roll = self_status.IMU085_rotationVector_roll;
           xSemaphoreGive(IMU085_mutex);
+          MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+          lineBlank();
+          MSD_screen.print(F("YPR // "));
+          MSD_screen.print(yaw);
+          MSD_screen.print(F(", "));
+          MSD_screen.print(pitch);
+          MSD_screen.print(F(", "));
+          MSD_screen.print(roll);
+          MSD_screen.pushSprite(0, 0);
         }
       }
     }
-    MSD_screen.pushSprite(0, 0);
 
-    // Line 4 (Button/Knob/ MODE) [BNO085]
+    // Line 4 (Button/Knob/ MODE)
     MSD_screen.setCursor(0, 48);
     lineBlank();
     MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
@@ -752,7 +756,7 @@ void handleTFT(void *parameter)
     MSD_screen.print(F("]"));
     MSD_screen.pushSprite(0, 0);
 
-    // OTA/Wifi
+    // Line 5 OTA/Wifi
     MSD_screen.setCursor(0, 64);
     lineBlank();
     // If OTA task is suspended...
@@ -767,8 +771,8 @@ void handleTFT(void *parameter)
       else
       // If its off but not timeout
       {
-        MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
-        MSD_screen.print(F("OTA // [[ OFF ]]"));
+        MSD_screen.setTextColor(FFPAL_ORANGE, TFT_BLACK);
+        MSD_screen.print(F("OTA // [[ SUSPENDED ]]"));
       }
     }
     else
@@ -777,7 +781,8 @@ void handleTFT(void *parameter)
       // If Wifi is connected
       if (WiFi.isConnected())
       {
-        MSD_screen.setTextColor(FFPAL_GREEN, TFT_BLACK);
+        if (millis() < OTA_STARTUP_TIME_MS) MSD_screen.setTextColor(FFPAL_ORANGE, TFT_BLACK);
+        else MSD_screen.setTextColor(FFPAL_GREEN, TFT_BLACK);
         MSD_screen.print(F("OTA // "));
         MSD_screen.print(WiFi.localIP());
       }
@@ -789,6 +794,26 @@ void handleTFT(void *parameter)
       }
     }
     MSD_screen.pushSprite(0, 0);
+
+    // Line 6 LORA Radio
+    MSD_screen.setCursor(0, 80);
+    // Radio Not Connected
+    if (!self_status.LORA_connected)
+    {
+      lineBlank();
+      MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      MSD_screen.print(F("RADIO // [[ .. OFFLINE ..  ]]"));
+      MSD_screen.pushSprite(0, 0);
+    }
+
+    // Radio is Connected
+    if (self_status.LORA_connected)
+    {
+      lineBlank();
+      MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+      MSD_screen.print(F("RADIO // [ READY ]"));
+      MSD_screen.pushSprite(0, 0);
+    }
   }
 }
 
@@ -815,6 +840,9 @@ void handleKnob(void *parameter)
 #pragma endregion
 
 #pragma region Controller // Controls power
+
+
+
 void handleControl(void *parameter)
 {
   while (1)
@@ -823,7 +851,7 @@ void handleControl(void *parameter)
     vTaskDelay(20 / portTICK_PERIOD_MS);
     // Check if Display should be on
     // On reset display should come on for a few seconds
-    if (millis() <= 10000)
+    if (millis() <= TFT_STARTUP_TIME_MS)
     {
       self_status.display_enable = true;
     }
@@ -876,7 +904,7 @@ void handleControl(void *parameter)
     if (self_status.knob_mode != 0)
       self_status.OTA_enable = false;
     // OTA should come on for 30s at reset for safety
-    if (millis() < 30000) 
+    if (millis() < OTA_STARTUP_TIME_MS)
     {
       self_status.OTA_enable = true;
       self_status.OTA_timeout = false;
@@ -1062,6 +1090,20 @@ void setup()
       app_cpu);            // Run on one core for demo purposes (ESP32 only)
 
   Serial.println("Controller Task Started");
+#pragma endregion
+
+#pragma region Setup LORA
+  // LORA Task
+  xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
+      handleLORA,          // Function to be called
+      "Handle LORA",       // Name of task
+      10000,               // Stack size (bytes in ESP32, words in FreeRTOS)
+      NULL,                // Parameter to pass to function
+      2,                   // Task priority (0 to configMAX_PRIORITIES - 1)
+      &task_LORA,          // Task handle
+      app_cpu);            // Run on one core for demo purposes (ESP32 only)
+
+  Serial.println("LORA Task Started");
 #pragma endregion
 
   Serial.println("All tasks created");
