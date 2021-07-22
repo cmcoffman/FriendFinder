@@ -829,22 +829,28 @@ void handleControl(void *parameter)
     }
     else
     {
-      // Do I need to turn the display off?
-      if (self_status.knob_mode >= 2 && self_status.display_enable)
-      {
+      if (self_status.knob_mode == 2)
         self_status.display_enable = false;
-        vTaskSuspend(task_TFT);    // Suspend the TFT_task
-        tft.fillScreen(TFT_BLACK); // Blank Screen
-        digitalWrite(TFT_BL, LOW); //Backlight Off
-      }
-      // Do I need to turn the display on?
-      if (self_status.knob_mode < 2 && !self_status.display_enable)
-      {
+      if (self_status.knob_mode != 2)
         self_status.display_enable = true;
-        tft.fillScreen(TFT_BLACK);  // Blank Screen
-        digitalWrite(TFT_BL, HIGH); //Backlight On
-        vTaskResume(task_TFT);      // Resume the TFT_task
-      }
+    }
+
+    // TFT is running but should be shut off
+    if (eTaskGetState(task_TFT) != eSuspended && self_status.display_enable == false)
+    {
+      Serial.println("knob turns display off");
+      vTaskSuspend(task_TFT);    // Suspend the TFT_task
+      tft.fillScreen(TFT_BLACK); // Blank Screen
+      digitalWrite(TFT_BL, LOW); //Backlight Off
+    }
+
+    // TFT is off but should be on
+    if (eTaskGetState(task_TFT) == eSuspended && self_status.display_enable == true)
+    {
+      Serial.println("knob turns display on");
+      tft.fillScreen(TFT_BLACK);  // Blank Screen
+      digitalWrite(TFT_BL, HIGH); //Backlight On
+      vTaskResume(task_TFT);      // Suspend the TFT_task
     }
 
     // Check if LED should be on
@@ -870,7 +876,7 @@ void handleControl(void *parameter)
     if (self_status.knob_mode != 0)
       self_status.OTA_enable = false;
     // OTA should come on for 30s at reset for safety
-    if (millis() < 30000)
+    if (millis() < 30000) 
     {
       self_status.OTA_enable = true;
       self_status.OTA_timeout = false;
@@ -939,20 +945,20 @@ void setup()
 
   Serial.println("OTA Task Started");
 #pragma endregion
-#pragma region Setup LED
+#pragma region Setup LED / Heartbeat
   // Configure LED
   pinMode(led_pin, OUTPUT);
   // LED Task
-  // xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
-  //     toggleLED,           // Function to be called
-  //     "Toggle LED",        // Name of task
-  //     1024,                // Stack size (bytes in ESP32, words in FreeRTOS)
-  //     NULL,                // Parameter to pass to function
-  //     1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
-  //     &task_LED,           // Task handle
-  //     app_cpu);            // Run on one core for demo purposes (ESP32 only)
+  xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
+      toggleLED,           // Function to be called
+      "Toggle LED",        // Name of task
+      1024,                // Stack size (bytes in ESP32, words in FreeRTOS)
+      NULL,                // Parameter to pass to function
+      1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
+      &task_LED,           // Task handle
+      app_cpu);            // Run on one core for demo purposes (ESP32 only)
 
-  // Serial.println("LED Task Started");
+  Serial.println("LED Task Started");
 #pragma endregion
 #pragma region GPS Setup
   // Setup GPS
