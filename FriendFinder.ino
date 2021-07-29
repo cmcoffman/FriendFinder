@@ -44,7 +44,7 @@ static SemaphoreHandle_t Serial_mutex; // Locks Serial object
 
 #pragma region OTA Update
 // OTA Update
-#define OTA_STARTUP_TIME_MS 30000 // How long OTA turns on for at startup (used by controller)
+#define OTA_STARTUP_TIME_MS 0 // How long OTA turns on for at startup (used by controller)
 TaskHandle_t task_OTA;
 
 void handleOTA(void *parameter)
@@ -177,7 +177,7 @@ void toggleLED(void *parameter)
     // digitalWrite(led_pin, HIGH);
     // vTaskDelay(250 / portTICK_PERIOD_MS);
     // digitalWrite(led_pin, LOW);
-    vTaskDelay(1750 / portTICK_PERIOD_MS);
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
 
     if (xSemaphoreTake(Serial_mutex, 0))
     {
@@ -780,7 +780,18 @@ void handleKnob(void *parameter)
 #pragma region Radio
 
 // RFM95W LORA Module
-#define SPI_HAS_TRANSACTION
+#define SPI_HAS_TRANSACTION // what's this do exactly?
+
+// Setup HSPI
+// FFDisplay it was:
+// #define HSPI_SCK 25    // A1 on huzzah32
+// #define HSPI_MISO 27   // 27 on huzzah 32
+// #define HSPI_MOSI 26   // A0 on huzzah 32
+
+#define HSPI_SCK 26  // A0 on huzzah32
+#define HSPI_MISO 4  // A5 on huzzah 32
+#define HSPI_MOSI 12 // 12 on huzzah 32
+
 #define MY_ADDRESS 2
 #define THEIR_ADDRESS 1
 #define RFM95_CS 15
@@ -812,36 +823,59 @@ uint8_t broadcast[] = "Hello World!";
 void handleLORA(void *parameter)
 {
 
-  if (messenger.init())
+  // Setup HSPI
+  SPI.begin(HSPI_SCK, HSPI_MISO, HSPI_MOSI);
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+  // Reset the radio (sometimes) doesn't work or makes it not work?
+  //resetLORA();
+
+  if (!messenger.init())
+  {
+    Serial.println("Radio /// [ FAIL ] { MANAGER }");
+    self_status.LORA_connected = true; // for dubugging
+  }
+  else
   {
     Serial.println("Radio /// [ OK ]");
     self_status.LORA_connected = true;
   }
-  else
-    Serial.println("Radio /// [ FAIL ] { MANAGER }");
+
   radio.setFrequency(915.0);
   radio.setTxPower(23, false);
   messenger.setThisAddress(MY_ADDRESS);
+
   while (1)
   {
-    if (xSemaphoreTake(SPI_mutex, 10)) // poll if SPI is available
+    // Radio is connected
+    if (self_status.LORA_connected)
     {
-      // Radio is connected
-      if (self_status.LORA_connected)
+      Serial.println("Attempting Broadcast...");
+      SPI.begin(HSPI_SCK, HSPI_MISO, HSPI_MOSI);
+      messenger.init();
+      // Simple Broadcast
+      // radio.send(broadcast, sizeof(broadcast)); // sometimes locks up?
+
+      // Reliable datagram
+      if (messenger.sendtoWait(broadcast, sizeof(broadcast), THEIR_ADDRESS))
       {
-        //vTaskSuspend(task_TFT);
-        //radio.send(broadcast, sizeof(broadcast));
-        //vTaskResume(task_TFT);
-        Serial.println("Broadcast Complete.");
+        // Now wait for a reply from the server
+        uint8_t len = sizeof(broadcast);
+        uint8_t from;
+        Serial.println("reciept acknowledged!");
       }
       else
       {
-        Serial.println("Radio /// [ .. offline ..  ]");
+        Serial.println("no reply - is anyone listening?");
       }
-      xSemaphoreGive(SPI_mutex);
-      vTaskDelay(2000 / portTICK_PERIOD_MS);
+
+      Serial.println("...Broadcast Complete.");
     }
-    
+    else
+    {
+      Serial.println("Radio /// [ .. offline ..  ]");
+    }
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
   }
 }
 
@@ -908,7 +942,7 @@ void handleControl(void *parameter)
       self_status.OTA_enable = true;
     if (self_status.knob_mode != 0)
       self_status.OTA_enable = false;
-    // OTA should come on for 30s at reset for safety
+    // OTA always comes on at startup for a time?
     if (millis() < OTA_STARTUP_TIME_MS)
     {
       self_status.OTA_enable = true;
@@ -1085,20 +1119,6 @@ void setup()
   Serial.println("Controller Task Started");
 #pragma endregion
 
-#pragma region Setup LORA
-  LORA_mutex = xSemaphoreCreateMutex();
-  // LORA Task
-  xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
-      handleLORA,          // Function to be called
-      "Handle LORA",       // Name of task
-      10000,               // Stack size (bytes in ESP32, words in FreeRTOS)
-      NULL,                // Parameter to pass to function
-      2,                   // Task priority (0 to configMAX_PRIORITIES - 1)
-      &task_LORA,          // Task handle
-      0);                  // Run on one core for demo purposes (ESP32 only)
-
-  Serial.println("LORA Task Started");
-#pragma endregion
 #pragma region TFT Setup
   // TFT Task
   TFT_mutex = xSemaphoreCreateMutex();
@@ -1114,6 +1134,22 @@ void setup()
 
   Serial.println("TFT Task Started");
 #pragma endregion
+
+#pragma region Setup LORA
+  LORA_mutex = xSemaphoreCreateMutex();
+  // LORA Task
+  xTaskCreatePinnedToCore( // Use xTaskCreate() in vanilla FreeRTOS
+      handleLORA,          // Function to be called
+      "Handle LORA",       // Name of task
+      20000,               // Stack size (bytes in ESP32, words in FreeRTOS)
+      NULL,                // Parameter to pass to function
+      1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
+      &task_LORA,          // Task handle
+      app_cpu);            // Run on one core for demo purposes (ESP32 only)
+
+  Serial.println("LORA Task Started");
+#pragma endregion
+
   Serial.println("All tasks created");
 }
 
