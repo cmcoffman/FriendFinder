@@ -178,3 +178,62 @@ void printActivity(uint8_t activity_id)
 //     vTaskDelay(2000 / portTICK_PERIOD_MS);
 //   }
 // }
+
+// FFDisplay Radio Setup ##########################
+
+#include <RHReliableDatagram.h>
+#include <RH_RF95.h>
+#include <SPI.h>
+
+// Radio
+#define MY_ADDRESS 2
+#define THEIR_ADDRESS 1
+#define RFM95_CS 21
+#define RFM95_RST 2
+#define RFM95_INT 32
+RH_RF95 driver(RFM95_CS, RFM95_INT);
+RHReliableDatagram manager(driver, MY_ADDRESS);
+
+
+void setup() {
+      // Reset Radio
+  digitalWrite(RFM95_RST, HIGH);
+  pinMode(RFM95_RST, OUTPUT);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(100);
+  digitalWrite(RFM95_RST, LOW);
+  delay(10);
+  digitalWrite(RFM95_RST, HIGH);
+  delay(10);
+  delay(1000);
+
+  // Setup HSPI
+#define HSPI_SCK 25
+#define HSPI_MISO 27
+#define HSPI_MOSI 26
+  SPI.begin(HSPI_SCK, HSPI_MISO, HSPI_MOSI);
+  delay(1000);
+
+
+  if (!manager.init()) {
+    Serial.println("Radio - FAIL");
+  } else {
+    Serial.println("Radio - OK");
+  }
+
+  if (!driver.setFrequency(915.0)) {
+    Serial.println("setFrequency failed");
+    while (1)
+      ;
+  }
+
+  // You can set transmitter powers from 5 to 23 dBm:
+  driver.setTxPower(23, false);
+  driver.setCADTimeout(5000);
+
+}
+
+uint8_t data[] = "I exist!";
+// Dont put this on the stack:
+uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+
