@@ -413,7 +413,7 @@ void updateTFT(void *parameter) {
     // Line 1 (Time)
     MSD_screen.setCursor(0, 0);
     MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    MSD_screen.print(F("TIME // [UNDEFINED]"));
+    MSD_screen.print(F("TIME // [ undefined ]"));
     
     // Line 2 (Space)
     MSD_screen.setCursor(0, 16);
