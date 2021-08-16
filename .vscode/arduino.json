@@ -1,8 +1,7 @@
 {
-    "sketch": "FriendFinder.ino",
+    "configuration": "FlashFreq=80,UploadSpeed=921600,DebugLevel=none,PartitionScheme=default",
     "board": "esp32:esp32:featheresp32",
-    "programmer": "AVRISP mkII",
-    "port": "COM3",
-    "output": "..\\_FF_build",
-    "configuration": "FlashFreq=80,UploadSpeed=921600,DebugLevel=error,PartitionScheme=default"
+    "output": "../.FF_build",
+    "sketch": "FriendFinder.ino",
+    "port": "/dev/ttyUSB0"
 }

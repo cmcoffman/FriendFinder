@@ -6,8 +6,8 @@
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #include <SPI.h>
-#include "AF_240x135_ST7789.h" // Local config header
-#define USER_SETUP_LOADED      // forces use of local config header
+//#include "AF_240x135_ST7789.h" // Local config header
+//#define USER_SETUP_LOADED      // forces use of local config header
 #include <TFT_eSPI.h>
 #include <ArduinoOTA.h>
 #include <ESPmDNS.h>
@@ -21,10 +21,8 @@ static const BaseType_t app_cpu = 0;
 #else
 static const BaseType_t app_cpu = 1;
 #endif
-
-// SPI Mutex
-// Needed to hand off SPI between display and lora?
-static SemaphoreHandle_t SPI_mutex;
+#define INCLUDE_vTaskSuspend 1
+static SemaphoreHandle_t SPI_mutex; // Locks SPI
 
 // FF Data
 ffStatus self_status;
@@ -44,7 +42,7 @@ static SemaphoreHandle_t Serial_mutex; // Locks Serial object
 
 #pragma region OTA Update
 // OTA Update
-#define OTA_STARTUP_TIME_MS 0 // How long OTA turns on for at startup (used by controller)
+#define OTA_STARTUP_TIME_MS 10000 // How long OTA turns on for at startup (used by controller)
 TaskHandle_t task_OTA;
 
 void handleOTA(void *parameter)
@@ -54,75 +52,78 @@ void handleOTA(void *parameter)
 
   while (1)
   {
-    // Suspend self if should be off
-    //if (!self_status.OTA_enable) vTaskSuspend( NULL );
-    // Try to Connect if not connected
-    if (!WiFi.isConnected())
-    {
-      self_status.xTicks_When_Wifi_Disconnected = xTaskGetTickCount(); // now
-      while (!WiFi.isConnected())
-      {
-        WiFi.mode(WIFI_STA);
-        Serial.println("WiFi /// [Connecting...]");
-        WiFi.begin(ssid, password);
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
-        while (WiFi.waitForConnectResult() != WL_CONNECTED)
-        {
-          Serial.println("WiFi /// [..retry connection..]");
-          WiFi.reconnect();
-          vTaskDelay(5000 / portTICK_PERIOD_MS);
-        }
-      }
-      self_status.xTicks_When_Wifi_Disconnected = 0;
-      ArduinoOTA.setHostname("FFProto");
-      Serial.println("WiFi /// [..CONNECTED..]");
-      Serial.print("IP address: ");
-      Serial.println(WiFi.localIP());
+  }
+  // while (1)
+  // {
+  //   // Suspend self if should be off
+  //   //if (!self_status.OTA_enable) vTaskSuspend( NULL );
+  //   // Try to Connect if not connected
+  //   if (!WiFi.isConnected())
+  //   {
+  //     self_status.xTicks_When_Wifi_Disconnected = xTaskGetTickCount(); // now
+  //     while (!WiFi.isConnected())
+  //     {
+  //       WiFi.mode(WIFI_STA);
+  //       Serial.println("WiFi /// [Connecting...]");
+  //       WiFi.begin(ssid, password);
+  //       vTaskDelay(5000 / portTICK_PERIOD_MS);
+  //       while (WiFi.waitForConnectResult() != WL_CONNECTED)
+  //       {
+  //         Serial.println("WiFi /// [..retry connection..]");
+  //         WiFi.reconnect();
+  //         vTaskDelay(5000 / portTICK_PERIOD_MS);
+  //       }
+  //     }
+  //     self_status.xTicks_When_Wifi_Disconnected = 0;
+  //     ArduinoOTA.setHostname("FFProto");
+  //     Serial.println("WiFi /// [..CONNECTED..]");
+  //     Serial.print("IP address: ");
+  //     Serial.println(WiFi.localIP());
 
-      // Start OTA
-      ArduinoOTA
-          .onStart([]() {
-            String type;
-            if (ArduinoOTA.getCommand() == U_FLASH)
-              type = "sketch";
-            else // U_SPIFFS
-              type = "filesystem";
+  //     // Start OTA
+  //     ArduinoOTA
+  //         .onStart([]() {
+  //           String type;
+  //           if (ArduinoOTA.getCommand() == U_FLASH)
+  //             type = "sketch";
+  //           else // U_SPIFFS
+  //             type = "filesystem";
 
-            // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS
-            // using SPIFFS.end()
-            Serial.println("Start updating " + type);
-          })
-          .onEnd([]() {
-            Serial.println("\nEnd");
-          })
-          .onProgress([](unsigned int progress, unsigned int total) {
-            Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-          })
-          .onError([](ota_error_t error) {
-            Serial.printf("Error[%u]: ", error);
-            if (error == OTA_AUTH_ERROR)
-              Serial.println("Auth Failed");
-            else if (error == OTA_BEGIN_ERROR)
-              Serial.println("Begin Failed");
-            else if (error == OTA_CONNECT_ERROR)
-              Serial.println("Connect Failed");
-            else if (error == OTA_RECEIVE_ERROR)
-              Serial.println("Receive Failed");
-            else if (error == OTA_END_ERROR)
-              Serial.println("End Failed");
-          });
+  //           // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS
+  //           // using SPIFFS.end()
+  //           Serial.println("Start updating " + type);
+  //         })
+  //         .onEnd([]() {
+  //           Serial.println("\nEnd");
+  //         })
+  //         .onProgress([](unsigned int progress, unsigned int total) {
+  //           Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  //         })
+  //         .onError([](ota_error_t error) {
+  //           Serial.printf("Error[%u]: ", error);
+  //           if (error == OTA_AUTH_ERROR)
+  //             Serial.println("Auth Failed");
+  //           else if (error == OTA_BEGIN_ERROR)
+  //             Serial.println("Begin Failed");
+  //           else if (error == OTA_CONNECT_ERROR)
+  //             Serial.println("Connect Failed");
+  //           else if (error == OTA_RECEIVE_ERROR)
+  //             Serial.println("Receive Failed");
+  //           else if (error == OTA_END_ERROR)
+  //             Serial.println("End Failed");
+  //         });
 
-      ArduinoOTA.begin();
-      Serial.println("OTA Ready");
-    }
+  //     ArduinoOTA.begin();
+  //     Serial.println("OTA Ready");
+  //   }
 
-    // Handle OTA if connected
-    if (WiFi.isConnected())
-    {
-      ArduinoOTA.handle();
-      taskYIELD();
-    }
-  } // end loop
+  //   // Handle OTA if connected
+  //   if (WiFi.isConnected())
+  //   {
+  //     ArduinoOTA.handle();
+  //     taskYIELD();
+  //   }
+  //} // end loop
 }
 #pragma endregion
 
@@ -289,7 +290,7 @@ void handleIMU085(void *parameter)
       // Try to initialize!
       if (!bno08x.begin_I2C())
       {
-        Serial.println("IMU_085 NOT Connected");
+        //Serial.println("IMU_085 NOT Connected");
         self_status.IMU085_connected = false;
         vTaskDelay(100 / portTICK_PERIOD_MS);
       }
@@ -535,13 +536,11 @@ void handleIMU085(void *parameter)
 
 #pragma region Display
 // Display
-#define TFT_STARTUP_TIME_MS 0 // How long TFT turns on for at startup (used by controller)
+#define TFT_STARTUP_TIME_MS 10000 // How long TFT turns on for at startup (used by controller)
 TFT_eSPI tft = TFT_eSPI();
 // Screen Buffers
 #define STATIC_LINES 5
 #define EXTRA_PX 7
-//   ffDisplay.terminalScreen.setCursor(
-//       0, 135 - ffDisplay.terminalScreen.fontHeight());
 #define NEWLINE_X 0
 #define NEWLINE_Y 135 - 16
 TFT_eSprite MSD_screen = TFT_eSprite(&tft);
@@ -562,6 +561,7 @@ void lineBlank()
 TaskHandle_t task_TFT;
 void handleTFT(void *parameter)
 {
+
   Serial.println("Display Startup");
 
   // TFT Display Setup
@@ -570,7 +570,6 @@ void handleTFT(void *parameter)
   tft.init();
   tft.setRotation(1);
   tft.fillScreen(TFT_ORANGE);
-
   // Setup "Master System Display" Screen/Spite
   MSD_screen.setRotation(1);
   MSD_screen.createSprite(240, 135);
@@ -579,180 +578,183 @@ void handleTFT(void *parameter)
 
   while (1)
   {
-    if (xSemaphoreTake(SPI_mutex, 0)) // poll if SPI is available
+    if (xSemaphoreTake(SPI_mutex, portMAX_DELAY) == pdTRUE)
     {
-      // Line 1 (Time)
-      MSD_screen.setCursor(0, 0);
-      MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
-      MSD_screen.print(F("TIME // [ UNDEFINED ]  { .. "));
-      MSD_screen.print(millis() / 1000);
-      MSD_screen.print(F("s .. }"));
-      MSD_screen.pushSprite(0, 0);
 
-      // Line 2 (Space)
-      MSD_screen.setCursor(0, 16);
-      if (!self_status.GPS_connected)
-      { // GPS Not Connected
-        MSD_screen.setTextColor(FFPAL_PURPLE, TFT_BLACK);
-        lineBlank();
-        MSD_screen.print(F("SPACE // [[ FAIL ]]"));
-      }
-      else
-      {
-        if (!self_status.GPS_fix)
-        { // ...but no fix
-          if (self_status.GPS_naive)
-          { // and GPS has never had a fix
-            MSD_screen.setTextColor(FFPAL_BLUE, TFT_BLACK);
-            lineBlank();
-            MSD_screen.print(F("SPACE // [ INVALID ] { "));
-            MSD_screen.print(self_status.satellites);
-            MSD_screen.print(F(" }"));
-          }
-          else
-          { // GPS has had a fix before
-            MSD_screen.setTextColor(FFPAL_PURPLE, TFT_BLACK);
-            lineBlank();
-            MSD_screen.print(F("SPACE // [ LOST ] { "));
-            MSD_screen.print(self_status.satellites);
-            MSD_screen.print(F(" }"));
-          }
-        }
-        else
-        { // GPS Connected with Fix
-          // Try to store data for 1 ms
-          if (xSemaphoreTake(GPS_mutex, 0))
-          {
-            if (self_status.GPS_naive)
-              self_status.GPS_naive = false; // no longer naive
-            float lat = self_status.latitude;
-            float lon = self_status.longitude;
-            xSemaphoreGive(GPS_mutex);
-            MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
-            lineBlank();
-            MSD_screen.print(F("SPACE // "));
-            MSD_screen.print(lat, 7);
-            MSD_screen.print(F(", "));
-            MSD_screen.print(lon, 7);
-          }
-          else
-          { // Cant retrieve sempahore, probably should just pass() but I wanna see if it happens
-            MSD_screen.setTextColor(TFT_RED, TFT_BLACK);
-            MSD_screen.print(F("SPACE // [?? Blocked ??]"));
-          }
-        }
-      }
-      MSD_screen.pushSprite(0, 0);
+    // Line 1 (Time)
+    MSD_screen.setCursor(0, 0);
+    MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    MSD_screen.print(F("TIME // [ UNDEFINED ]  { .. "));
+    MSD_screen.print(millis() / 1000);
+    MSD_screen.print(F("s .. }"));
+    MSD_screen.pushSprite(0, 0);
 
-      // Line 3 (IMU) [BNO085]
-      MSD_screen.setCursor(0, 32);
-      if (!self_status.IMU085_connected)
-      {
-        MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
-        lineBlank();
-        MSD_screen.print(F("YPR // ... [[NULL]] ..."));
-        MSD_screen.pushSprite(0, 0);
-      }
-      else
-      {
-        //if (xSemaphoreTake(IMU085_new, 0))
-        if (true)
-        {
-          float yaw, pitch, roll;
-          if (xSemaphoreTake(IMU085_mutex, 0))
-          {
-            yaw = self_status.IMU085_rotationVector_yaw;
-            pitch = self_status.IMU085_rotationVector_pitch;
-            roll = self_status.IMU085_rotationVector_roll;
-            xSemaphoreGive(IMU085_mutex);
-            MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
-            lineBlank();
-            MSD_screen.print(F("YPR // "));
-            MSD_screen.print(yaw);
-            MSD_screen.print(F(", "));
-            MSD_screen.print(pitch);
-            MSD_screen.print(F(", "));
-            MSD_screen.print(roll);
-            MSD_screen.pushSprite(0, 0);
-          }
-        }
-      }
-
-      // Line 4 (Button/Knob/ MODE)
-      MSD_screen.setCursor(0, 48);
+    // Line 2 (Space)
+    MSD_screen.setCursor(0, 16);
+    if (!self_status.GPS_connected)
+    { // GPS Not Connected
+      MSD_screen.setTextColor(FFPAL_PURPLE, TFT_BLACK);
       lineBlank();
-      MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
-      MSD_screen.print(F("UI // ["));
-      MSD_screen.print(self_status.knob_V);
-      MSD_screen.print(F("|"));
-      MSD_screen.print(self_status.knob_mode);
-      MSD_screen.print(F("]"));
-      MSD_screen.pushSprite(0, 0);
-
-      // Line 5 OTA/Wifi
-      MSD_screen.setCursor(0, 64);
-      lineBlank();
-      // If OTA task is suspended...
-      if (eTaskGetState(task_OTA) == eSuspended)
-      {
-        // Did it time out?
-        if (self_status.OTA_timeout)
-        {
-          MSD_screen.setTextColor(TFT_PURPLE, TFT_BLACK);
-          MSD_screen.print(F("OTA // [[ Timeout ]]"));
-        }
-        else
-        // If its off but not timeout
-        {
-          MSD_screen.setTextColor(FFPAL_ORANGE, TFT_BLACK);
-          MSD_screen.print(F("OTA // [[ SUSPENDED ]]"));
-        }
-      }
-      else
-      {
-        // If OTA Task is Running...
-        // If Wifi is connected
-        if (WiFi.isConnected())
-        {
-          if (millis() < OTA_STARTUP_TIME_MS)
-            MSD_screen.setTextColor(FFPAL_ORANGE, TFT_BLACK);
-          else
-            MSD_screen.setTextColor(FFPAL_GREEN, TFT_BLACK);
-          MSD_screen.print(F("OTA // "));
-          MSD_screen.print(WiFi.localIP());
-        }
-        else
-        // wifi not connected
-        {
-          MSD_screen.setTextColor(FFPAL_BLUE, TFT_BLACK);
-          MSD_screen.print(F("OTA // ..CONNECTING.."));
-        }
-      }
-      MSD_screen.pushSprite(0, 0);
-
-      // Line 6 LORA Radio
-      MSD_screen.setCursor(0, 80);
-      // Radio Not Connected
-      if (!self_status.LORA_connected)
-      {
-        lineBlank();
-        MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
-        MSD_screen.print(F("RADIO // [[ .. OFFLINE ..  ]]"));
-        MSD_screen.pushSprite(0, 0);
-      }
-
-      // Radio is Connected
-      if (self_status.LORA_connected)
-      {
-        lineBlank();
-        MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
-        MSD_screen.print(F("RADIO // [ READY ]"));
-        MSD_screen.pushSprite(0, 0);
-      }
-      xSemaphoreGive(SPI_mutex);
+      MSD_screen.print(F("SPACE // [[ FAIL ]]"));
     }
-    taskYIELD();
-    vTaskDelay(20 / portTICK_PERIOD_MS);
+    else
+    {
+      if (!self_status.GPS_fix)
+      { // ...but no fix
+        if (self_status.GPS_naive)
+        { // and GPS has never had a fix
+          MSD_screen.setTextColor(FFPAL_BLUE, TFT_BLACK);
+          lineBlank();
+          MSD_screen.print(F("SPACE // [ INVALID ] { "));
+          MSD_screen.print(self_status.satellites);
+          MSD_screen.print(F(" }"));
+        }
+        else
+        { // GPS has had a fix before
+          MSD_screen.setTextColor(FFPAL_PURPLE, TFT_BLACK);
+          lineBlank();
+          MSD_screen.print(F("SPACE // [ LOST ] { "));
+          MSD_screen.print(self_status.satellites);
+          MSD_screen.print(F(" }"));
+        }
+      }
+      else
+      { // GPS Connected with Fix
+        // Try to store data for 1 ms
+        if (xSemaphoreTake(GPS_mutex, 0))
+        {
+          if (self_status.GPS_naive)
+            self_status.GPS_naive = false; // no longer naive
+          float lat = self_status.latitude;
+          float lon = self_status.longitude;
+          xSemaphoreGive(GPS_mutex);
+          MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+          lineBlank();
+          MSD_screen.print(F("SPACE // "));
+          MSD_screen.print(lat, 7);
+          MSD_screen.print(F(", "));
+          MSD_screen.print(lon, 7);
+        }
+        else
+        { // Cant retrieve sempahore, probably should just pass() but I wanna see if it happens
+          MSD_screen.setTextColor(TFT_RED, TFT_BLACK);
+          MSD_screen.print(F("SPACE // [?? Blocked ??]"));
+        }
+      }
+    }
+    MSD_screen.pushSprite(0, 0);
+
+    // Line 3 (IMU) [BNO085]
+    MSD_screen.setCursor(0, 32);
+    if (!self_status.IMU085_connected)
+    {
+      MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      lineBlank();
+      MSD_screen.print(F("YPR // ... [[NULL]] ..."));
+      //MSD_screen.pushSprite(0, 0);
+    }
+    else
+    {
+      //if (xSemaphoreTake(IMU085_new, 0))
+      if (true)
+      {
+        float yaw, pitch, roll;
+        if (xSemaphoreTake(IMU085_mutex, 0))
+        {
+          yaw = self_status.IMU085_rotationVector_yaw;
+          pitch = self_status.IMU085_rotationVector_pitch;
+          roll = self_status.IMU085_rotationVector_roll;
+          xSemaphoreGive(IMU085_mutex);
+          MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+          lineBlank();
+          MSD_screen.print(F("YPR // "));
+          MSD_screen.print(yaw);
+          MSD_screen.print(F(", "));
+          MSD_screen.print(pitch);
+          MSD_screen.print(F(", "));
+          MSD_screen.print(roll);
+          MSD_screen.pushSprite(0, 0);
+        }
+      }
+    }
+
+    // Line 4 (Button/Knob/ MODE)
+    MSD_screen.setCursor(0, 48);
+    lineBlank();
+    MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+    MSD_screen.print(F("UI // ["));
+    MSD_screen.print(self_status.knob_V);
+    MSD_screen.print(F("|"));
+    MSD_screen.print(self_status.knob_mode);
+    MSD_screen.print(F("]"));
+    //MSD_screen.pushSprite(0, 0);
+
+    // Line 5 OTA/Wifi
+    MSD_screen.setCursor(0, 64);
+    lineBlank();
+    // If OTA task is suspended...
+    if (eTaskGetState(task_OTA) == eSuspended)
+    {
+      // Did it time out?
+      if (self_status.OTA_timeout)
+      {
+        MSD_screen.setTextColor(TFT_PURPLE, TFT_BLACK);
+        MSD_screen.print(F("OTA // [[ Timeout ]]"));
+      }
+      else
+      // If its off but not timeout
+      {
+        MSD_screen.setTextColor(FFPAL_ORANGE, TFT_BLACK);
+        MSD_screen.print(F("OTA // [[ SUSPENDED ]]"));
+      }
+    }
+    else
+    {
+      // If OTA Task is Running...
+      // If Wifi is connected
+      if (WiFi.isConnected())
+      {
+        if (millis() < OTA_STARTUP_TIME_MS)
+          MSD_screen.setTextColor(FFPAL_ORANGE, TFT_BLACK);
+        else
+          MSD_screen.setTextColor(FFPAL_GREEN, TFT_BLACK);
+        MSD_screen.print(F("OTA // "));
+        MSD_screen.print(WiFi.localIP());
+      }
+      else
+      // wifi not connected
+      {
+        MSD_screen.setTextColor(FFPAL_BLUE, TFT_BLACK);
+        MSD_screen.print(F("OTA // ..CONNECTING.."));
+      }
+    }
+    //MSD_screen.pushSprite(0, 0);
+
+    // Line 6 LORA Radio
+    MSD_screen.setCursor(0, 80);
+    // // Radio Not Connected
+    // if (!self_status.LORA_connected)
+    // {
+    //   lineBlank();
+    //   MSD_screen.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    //   MSD_screen.print(F("RADIO // [[ .. OFFLINE ..  ]]"));
+    //  //MSD_screen.pushSprite(0, 0);
+    // }
+
+    // // Radio is Connected
+    // if (self_status.LORA_connected)
+    // {
+    //   lineBlank();
+    //   MSD_screen.setTextColor(TFT_ORANGE, TFT_BLACK);
+    //   MSD_screen.print(F("RADIO // [ READY ]"));
+    //   //MSD_screen.pushSprite(0, 0);
+    // }
+
+    MSD_screen.pushSprite(0, 0);
+    xSemaphoreGive(SPI_mutex);
+    vTaskDelay(700 / portTICK_PERIOD_MS);
+    //vTaskDelay(2000 / portTICK_PERIOD_MS);
+  }
   }
 }
 
@@ -781,22 +783,18 @@ void handleKnob(void *parameter)
 
 // RFM95W LORA Module
 #define SPI_HAS_TRANSACTION // what's this do exactly?
-
-// Setup HSPI
-// FFDisplay it was:
-// #define HSPI_SCK 25    // A1 on huzzah32
-// #define HSPI_MISO 27   // 27 on huzzah 32
-// #define HSPI_MOSI 26   // A0 on huzzah 32
-
-#define HSPI_SCK 26  // A0 on huzzah32
-#define HSPI_MISO 4  // A5 on huzzah 32
-#define HSPI_MOSI 12 // 12 on huzzah 32
+#define RFM95_SCK 26        // A0 on huzzah32
+#define RFM95_MISO 4        // A5 on huzzah 32
+#define RFM95_MOSI 12       // 12 on huzzah 32
 
 #define MY_ADDRESS 2
 #define THEIR_ADDRESS 1
 #define RFM95_CS 15
 #define RFM95_RST 14
 #define RFM95_INT 21
+
+//SPIClass * hspi = NULL;
+
 RH_RF95 radio(RFM95_CS, RFM95_INT);
 RHReliableDatagram messenger(radio, MY_ADDRESS);
 
@@ -824,7 +822,10 @@ void handleLORA(void *parameter)
 {
 
   // Setup HSPI
-  SPI.begin(HSPI_SCK, HSPI_MISO, HSPI_MOSI);
+  //hspi = new SPIClass(HSPI);
+  //hspi->begin(RFM95_SCK, RFM95_MISO, RFM95_MOSI, RFM95_CS); //SCLK, MISO, MOSI, SS
+
+  SPI.begin(RFM95_SCK, RFM95_MISO, RFM95_MOSI);
   vTaskDelay(1000 / portTICK_PERIOD_MS);
 
   // Reset the radio (sometimes) doesn't work or makes it not work?
@@ -845,37 +846,47 @@ void handleLORA(void *parameter)
   radio.setTxPower(23, false);
   messenger.setThisAddress(MY_ADDRESS);
 
+  //self_status.LORA_connected = true;
   while (1)
   {
-    // Radio is connected
-    if (self_status.LORA_connected)
+    if (xSemaphoreTake(SPI_mutex, portMAX_DELAY) == pdTRUE)
     {
-      Serial.println("Attempting Broadcast...");
-      SPI.begin(HSPI_SCK, HSPI_MISO, HSPI_MOSI);
-      messenger.init();
-      // Simple Broadcast
-      // radio.send(broadcast, sizeof(broadcast)); // sometimes locks up?
-
-      // Reliable datagram
-      if (messenger.sendtoWait(broadcast, sizeof(broadcast), THEIR_ADDRESS))
+      vTaskDelay(20 / portTICK_PERIOD_MS);
+      // Radio is connected
+      if (self_status.LORA_connected)
       {
-        // Now wait for a reply from the server
-        uint8_t len = sizeof(broadcast);
-        uint8_t from;
-        Serial.println("reciept acknowledged!");
+        //vTaskSuspend( task_TFT );
+        //SPI.begin(HSPI_SCK, HSPI_MISO, HSPI_MOSI);
+        //messenger.init();
+
+        // Simple Broadcast
+        Serial.println("Attempting Broadcast...");
+        radio.send(broadcast, sizeof(broadcast)); // sometimes locks up?
+        Serial.println("...Broadcast Complete.");
+
+        //xTaskResumeAll();
+        // // Reliable datagram
+        // if (messenger.sendtoWait(broadcast, sizeof(broadcast), THEIR_ADDRESS))
+        // {
+        //   // Now wait for a reply from the server
+        //   uint8_t len = sizeof(broadcast);
+        //   uint8_t from;
+        //   Serial.println("reciept acknowledged!");
+        // }
+        // else
+        // {
+        //   Serial.println("no reply - is anyone listening?");
+        // }
+
+        //vTaskResume( task_TFT );
       }
       else
       {
-        Serial.println("no reply - is anyone listening?");
+        Serial.println("Radio /// [ .. offline ..  ]");
       }
-
-      Serial.println("...Broadcast Complete.");
+      xSemaphoreGive(SPI_mutex);
+      vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
-    else
-    {
-      Serial.println("Radio /// [ .. offline ..  ]");
-    }
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
   }
 }
 
@@ -890,16 +901,16 @@ void handleControl(void *parameter)
     vTaskDelay(20 / portTICK_PERIOD_MS);
     // Check if Display should be on
     // On reset display should come on for a few seconds
-    if (millis() <= TFT_STARTUP_TIME_MS)
-    {
-      self_status.display_enable = true;
-    }
-    else
+    if (millis() >= TFT_STARTUP_TIME_MS)
     {
       if (self_status.knob_mode == 2)
         self_status.display_enable = false;
       if (self_status.knob_mode != 2)
         self_status.display_enable = true;
+    }
+    else
+    {
+      self_status.display_enable = true;
     }
 
     // TFT is running but should be shut off
@@ -984,9 +995,9 @@ void handleControl(void *parameter)
 }
 
 #pragma endregion
+
 void setup()
 {
-  SPI_mutex = xSemaphoreCreateMutex();
 
 #pragma region Setup Serial
   // Serial
@@ -1120,9 +1131,8 @@ void setup()
 #pragma endregion
 
 #pragma region TFT Setup
+  SPI_mutex = xSemaphoreCreateMutex();
   // TFT Task
-  TFT_mutex = xSemaphoreCreateMutex();
-  TFT_new = xSemaphoreCreateBinary();
   xTaskCreatePinnedToCore( // "Handle TFT"
       handleTFT,           // Function to be called
       "Handle TFT",        // Name of task
@@ -1143,7 +1153,7 @@ void setup()
       "Handle LORA",       // Name of task
       20000,               // Stack size (bytes in ESP32, words in FreeRTOS)
       NULL,                // Parameter to pass to function
-      1,                   // Task priority (0 to configMAX_PRIORITIES - 1)
+      2,                   // Task priority (0 to configMAX_PRIORITIES - 1)
       &task_LORA,          // Task handle
       app_cpu);            // Run on one core for demo purposes (ESP32 only)
 
