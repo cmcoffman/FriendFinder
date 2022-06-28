@@ -6,3 +6,4 @@ FF_calcs.xlsx
 *.code-workspace
 .vscode/c_cpp_properties.json
 .vscode/*
+.DS_Store/*
