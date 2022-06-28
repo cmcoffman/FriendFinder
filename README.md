@@ -4,6 +4,7 @@ FriendFinder is a dead-simple locator beacon and tracker meant for offgrid use. 
 
 FriendFinder is meant be to a single-use tool which more or less just points towards Friends and indicates how far away they are. I've tested the LoRA radios which can go up to 3 miles in decent not-line-of-sight conditions. In urban conditions range was just under 1 mile. Currently I am using an ESP32 microcontroller and intend eventually for FriendFinders to communicate over the internet though their own WiFi connection, or even via bluetooth to a users phone. Added functinonality via a phone app, such as a map of Friend's locations, the ability to send text messages over the LoRA radio could be added latter. There are already some projects that do this, and FriendFinder isn't meant to replace them. Functionality outside pointing towards friends and indicating their distance will be implemented via a phone app, but the device itself should only point.
 
+<<<<<<< HEAD
 # FriendFinder-RTOS
 
 This is a from-scratch rebuild of the FriendFinder to use FreeRTOS on the esp32. I decided to do this because it seems the best way to keep the several concurrent tasks running and using shared data. 
@@ -70,3 +71,7 @@ Which tasks their should be and what the boundaries of them are is tricky. Ideal
   * Monitor state of input buttons and set appropriate system modes
 
 
+=======
+
+ 
+>>>>>>> master

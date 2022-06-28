@@ -599,6 +599,7 @@ void handleTFT(void *parameter)
     MSD_screen.print(F("s .. }"));
     MSD_screen.pushSprite(0, 0);
 
+
     // Line 2 (Space)
     MSD_screen.setCursor(0, 16);
     if (!self_status.GPS_connected)
