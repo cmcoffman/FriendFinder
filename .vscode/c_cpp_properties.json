@@ -113,7 +113,9 @@
                 "/home/clayton/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-97-gc752ad5-5.2.0/lib/gcc/xtensa-esp32-elf/5.2.0/include",
                 "/home/clayton/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-97-gc752ad5-5.2.0/lib/gcc/xtensa-esp32-elf/5.2.0/include-fixed",
                 "/home/clayton/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-97-gc752ad5-5.2.0/xtensa-esp32-elf/include",
-                "/home/clayton/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-97-gc752ad5-5.2.0/xtensa-esp32-elf/sysroot/usr/include"
+                "/home/clayton/.arduino15/packages/esp32/tools/xtensa-esp32-elf-gcc/1.22.0-97-gc752ad5-5.2.0/xtensa-esp32-elf/sysroot/usr/include",
+                "C:\\Users\\Clayton.000\\AppData\\Local\\Arduino15\\packages\\esp32\\hardware\\esp32\\1.0.6\\**",
+                "C:\\Users\\Clayton.000\\AppData\\Local\\Arduino15\\packages\\esp32\\tools\\**"
             ],
             "forcedInclude": [
                 "/home/clayton/.arduino15/packages/esp32/hardware/esp32/1.0.6/cores/esp32/Arduino.h"
