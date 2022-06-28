@@ -13,6 +13,7 @@
 #include <ESPmDNS.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include "credentials.h" 
 #include <Adafruit_BNO08x.h>
 
 // FreeRTOS
@@ -45,10 +46,19 @@ static SemaphoreHandle_t Serial_mutex; // Locks Serial object
 #define OTA_STARTUP_TIME_MS 10000 // How long OTA turns on for at startup (used by controller)
 TaskHandle_t task_OTA;
 
+/* 
+Wifi credentials should be in a "credentials.h" file or similar.
+Copy/paste the template below:
+
+// Example credentials.h:
+#define WIFI_SSID "WIFI_NETWORK_NAME" // name of your WiFi network
+#define WIFI_PASSWORD "WIFI_NETWORK_PASSWORD" // password for your WiFi network
+ 
+ */
 void handleOTA(void *parameter)
 {
-  const char *ssid = "***REMOVED***";
-  const char *password = "***REMOVED***";
+  const char *ssid = WIFI_SSID;
+  const char *password = WIFI_PASSWORD;
 
   while (1)
   {
